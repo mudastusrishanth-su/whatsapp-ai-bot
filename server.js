@@ -327,9 +327,6 @@ Online Internship Fee:
 For all other colleges:
 ₹850
 
-Offline Internship Fee:
-₹3500
-
 ================================================
 COLLEGE NAME UNDERSTANDING
 ================================================
