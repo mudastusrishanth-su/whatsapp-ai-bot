@@ -133,6 +133,54 @@ app.post("/webhook", async (req, res) => {
 
       /*
       ====================================
+      SAFE TEXT HANDLING
+      ====================================
+      */
+
+      let text = "";
+
+      if (
+        message.type === "text" &&
+        message.text &&
+        message.text.body
+      ) {
+
+        text =
+          message.text.body
+          .toLowerCase()
+          .trim();
+
+      } else if (
+        message.type === "image"
+      ) {
+
+        text = "image uploaded";
+      }
+
+      console.log("Student:", text);
+
+      /*
+      ====================================
+      RESET CHAT
+      ====================================
+      */
+
+      if (text === "reset") {
+
+        sessions[from] = [];
+        userSessions[from] = null;
+        escalationData[from] = null;
+
+        await sendMessage(
+          from,
+          "✅ Your chat session has been reset.\n\nSend *Hi* to start again."
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
       HANDLE IMAGE ESCALATION
       ====================================
       */
@@ -171,9 +219,9 @@ Please check and assist the student.`;
         await sendMessage(
           from,
 
-`✅ Your issue has been escalated to our support team along with the screenshot proof.
+`✅ Your issue has been escalated successfully along with screenshot proof.
 
-Our team will verify and assist you shortly 😊`
+Our support team will contact you shortly 😊`
         );
 
         delete escalationData[from];
@@ -182,17 +230,6 @@ Our team will verify and assist you shortly 😊`
 
         return res.sendStatus(200);
       }
-
-      /*
-      ====================================
-      TEXT MESSAGE
-      ====================================
-      */
-
-      const text =
-        message.text.body.toLowerCase().trim();
-
-      console.log("Student:", text);
 
       /*
       ====================================
@@ -241,7 +278,9 @@ Please choose an option:
 3️⃣ Offer Letter Query
 4️⃣ Internship Details
 5️⃣ Payment Issue
-6️⃣ Certificate Query`
+6️⃣ Certificate Query
+
+Type your issue anytime if you need support 😊`
         );
 
         return res.sendStatus(200);
@@ -266,7 +305,10 @@ Please choose an option:
         "error",
         "pay now",
         "unable",
-        "failed"
+        "failed",
+        "lms",
+        "tap tap",
+        "taptap"
       ];
 
       const hasIssue =
@@ -282,7 +324,10 @@ Please choose an option:
 
       if (
         hasIssue &&
-        !userSessions[from]
+        userSessions[from] !==
+          "collect_issue_details" &&
+        userSessions[from] !==
+          "waiting_for_screenshot"
       ) {
 
         userSessions[from] =
@@ -297,14 +342,14 @@ Please choose an option:
 
 `✅ Please don’t worry 😊
 
-The payment registration website and the student dashboard website are different platforms.
+The registration/payment website and TapTap LMS are different platforms.
 
-• The registration website is used only for internship registration and payment.
-• The student dashboard/TapTap LMS is used for classes, assessments, lesson plans, and internship activities.
+• Registration website → internship registration & payment
+• TapTap LMS → classes, lesson plans, assessments, assignments, activities
 
-Sometimes the registration portal may still continue showing payment-related options even after successful payment verification. This is normal in many cases and does not affect your internship access.
+Sometimes the registration dashboard may still show "Pay Now" even after successful payment. This is normal in many cases.
 
-📌 Please share the following details:
+📌 Please share:
 
 1️⃣ Full Name
 2️⃣ College Name
@@ -313,11 +358,11 @@ Sometimes the registration portal may still continue showing payment-related opt
 5️⃣ Registered Phone Number
 
 📸 Also upload:
-• Screenshot of the issue
+• Screenshot
 OR
-• Screen recording/video proof
+• Screen recording of the issue
 
-This will help our support team verify and resolve your issue faster.`
+This helps our support team resolve your issue faster.`
         );
 
         return res.sendStatus(200);
@@ -348,29 +393,12 @@ This will help our support team verify and resolve your issue faster.`
 Now please upload:
 • screenshot
 OR
-• screen recording of the issue.`
+• screen recording of the issue 😊`
         );
 
         return res.sendStatus(200);
       }
-/*
-====================================
-RESET CHAT
-====================================
-*/
 
-if (text === "reset") {
-
-  sessions[from] = [];
-  userSessions[from] = {};
-
-  await sendMessage(
-    from,
-    "✅ Your chat session has been reset. Send *Hi* to start again."
-  );
-
-  return res.sendStatus(200);
-}
       /*
       ====================================
       GROQ AI RESPONSE
@@ -388,67 +416,68 @@ if (text === "reset") {
               content: `
 You are Blackbucks AI Internship Support Assistant.
 
-Your role is ONLY to help students regarding:
-- internship queries
-- TapTap LMS support
-- classes
-- lesson plans
-- offer letters
+You ONLY help students regarding:
+- internship support
+- TapTap LMS
 - payments
+- offer letters
+- lesson plans
 - assessments
 - certificates
+- internship classes
 
-================================================
-IMPORTANT SUPPORT RULES
-================================================
+=========================================
+IMPORTANT INFORMATION
+=========================================
 
-1. Dashboard showing "Pay Now" is normal.
+1. Dashboard showing "Pay Now" can be normal.
 
-The registration website is mainly used for:
+The registration website is mainly for:
 - internship registration
 - internship payment
 
-After successful payment:
-- all classes
+After payment:
+- classes
 - lesson plans
 - assessments
 - assignments
 - internship activities
 
-will happen through TapTap LMS and official WhatsApp groups.
+are handled through:
+- TapTap LMS
+- official WhatsApp groups
 
-2. Live classes happen Monday to Saturday.
+2. Classes happen Monday to Saturday.
 
 3. No classes on Sunday.
 
-4. Assignment links and timings are shared in official WhatsApp groups.
+4. Assignment links and timings are shared in WhatsApp groups.
 
-5. Each internship domain has separate lesson plans.
+5. Each domain has separate lesson plans.
 
 6. Share lesson plan links ONLY if:
 - student completed payment
 AND
 - student received offer letter.
 
-7. If students face login issue:
-Collect:
+7. If students face login issues:
+collect:
 - roll number
-- email ID
+- email
 - phone number
 - screenshot proof
 
-Then escalate issue to Mr. Nagarjuna.
+Then support team will handle it.
 
-================================================
+=========================================
 TAPTAP LMS
-================================================
+=========================================
 
-TapTap LMS:
 https://taptap.blackbucks.me
 
-================================================
+=========================================
 LESSON PLANS
-================================================
+=========================================
 
 Quantum Systems Engineer:
 https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80081&testType=collegeLessonPlan
@@ -498,9 +527,9 @@ https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80084&testType=collegeLess
 Growth Marketing & CRM Specialist:
 https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80088&testType=collegeLessonPlan
 
-================================================
+=========================================
 AI BEHAVIOR
-================================================
+=========================================
 
 - Reply professionally
 - Use friendly tone
@@ -508,7 +537,8 @@ AI BEHAVIOR
 - Keep replies short
 - Understand Telugu and English
 - Avoid robotic replies
-- Do not generate fake information
+- Never generate fake information
+- If unclear ask student politely
 `
             },
 
