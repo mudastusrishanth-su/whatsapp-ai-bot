@@ -321,18 +321,148 @@ How can I help you today?`
       }
 
       /*
-      ====================================
-      FALLBACK MENU
-      ====================================
-      */
+====================================
+SMART FALLBACK MENU
+====================================
+*/
 
-      if (
-        userSessions[from] ===
-        "waiting_for_query"
-      ) {
+if (
+  userSessions[from] ===
+  "waiting_for_query"
+) {
 
-        await sendMessage(
-          from,
+  /*
+  ====================================
+  DIRECT ISSUE DETECTION
+  ====================================
+  */
+
+  if (
+    text.includes("login") ||
+    text.includes("unable to login") ||
+    text.includes("taptap") ||
+    text.includes("tap tap")
+  ) {
+
+    userSessions[from] =
+      "collect_issue_details";
+
+    escalationData[from] = {
+      issue:
+        "TapTap LMS Login Issue"
+    };
+
+    await sendMessage(
+      from,
+
+`📋 Please share the following details:
+
+1️⃣ Full Name
+2️⃣ College Name
+3️⃣ Registered Email ID
+4️⃣ Roll Number
+5️⃣ Registered Phone Number
+
+📸 After sharing details, please upload:
+• screenshot
+OR
+• screen recording of the issue 😊`
+    );
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  ====================================
+  DOMAIN CHANGE DETECTION
+  ====================================
+  */
+
+  if (
+    text.includes("domain change") ||
+    text.includes("change domain") ||
+    text.includes("switch domain") ||
+    text.includes("change specialization") ||
+    text.includes("change course")
+  ) {
+
+    userSessions[from] =
+      "collect_domain_change_details";
+
+    escalationData[from] = {
+      issue:
+        "Domain Change Request"
+    };
+
+    await sendMessage(
+      from,
+
+`📋 Please share the following details for domain change request:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Registered Mobile Number
+4️⃣ Existing Domain
+5️⃣ New Domain Requested
+
+📸 After sharing details, please upload:
+• payment screenshot
+OR
+• offer letter screenshot 😊`
+    );
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  ====================================
+  TEST / EXAM ISSUE DETECTION
+  ====================================
+  */
+
+  if (
+    text.includes("test") ||
+    text.includes("exam") ||
+    text.includes("hackathon") ||
+    text.includes("assessment")
+  ) {
+
+    userSessions[from] =
+      "collect_exam_issue";
+
+    escalationData[from] = {
+      issue:
+        "Test / Hackathon / Exam Issue"
+    };
+
+    await sendMessage(
+      from,
+
+`📋 Please share the following details:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Registered Mobile Number
+4️⃣ Roll Number
+5️⃣ Test / Exam / Hackathon Link
+
+📸 Also upload:
+• screenshot
+OR
+• screen recording of the issue 😊`
+    );
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  ====================================
+  SHOW MENU ONLY IF ISSUE UNCLEAR
+  ====================================
+  */
+
+  await sendMessage(
+    from,
 
 `📌 Please choose your issue category:
 
@@ -346,13 +476,12 @@ How can I help you today?`
 8️⃣ Test / Exam / Hackathon Issues
 
 Or explain your issue in detail 😊`
-        );
+  );
 
-        userSessions[from] = null;
+  userSessions[from] = null;
 
-        return res.sendStatus(200);
-      }
-
+  return res.sendStatus(200);
+}
       /*
       ====================================
       LOGIN ISSUE FLOW
