@@ -353,7 +353,24 @@ OR
 
         return res.sendStatus(200);
       }
+/*
+====================================
+RESET CHAT
+====================================
+*/
 
+if (text === "reset") {
+
+  sessions[from] = [];
+  userSessions[from] = {};
+
+  await sendMessage(
+    from,
+    "✅ Your chat session has been reset. Send *Hi* to start again."
+  );
+
+  return res.sendStatus(200);
+}
       /*
       ====================================
       GROQ AI RESPONSE
