@@ -133,54 +133,6 @@ app.post("/webhook", async (req, res) => {
 
       /*
       ====================================
-      SAFE TEXT HANDLING
-      ====================================
-      */
-
-      let text = "";
-
-      if (
-        message.type === "text" &&
-        message.text &&
-        message.text.body
-      ) {
-
-        text =
-          message.text.body
-          .toLowerCase()
-          .trim();
-
-      } else if (
-        message.type === "image"
-      ) {
-
-        text = "image uploaded";
-      }
-
-      console.log("Student:", text);
-
-      /*
-      ====================================
-      RESET CHAT
-      ====================================
-      */
-
-      if (text === "reset") {
-
-        sessions[from] = [];
-        userSessions[from] = null;
-        escalationData[from] = null;
-
-        await sendMessage(
-          from,
-          "✅ Your chat session has been reset.\n\nSend *Hi* to start again."
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
       HANDLE IMAGE ESCALATION
       ====================================
       */
@@ -197,24 +149,72 @@ app.post("/webhook", async (req, res) => {
         const issueData =
           escalationData[from];
 
+        const imageId =
+          message.image.id;
+
         const escalationMessage =
 
 `🚨 STUDENT ISSUE ESCALATION
 
 👤 Student Details:
+
 ${issueData.details}
 
 ⚠️ Issue:
 ${issueData.issue}
 
-📸 Screenshot proof submitted by student.
+📸 Screenshot proof attached below.
 
 Please check and assist the student.`;
+
+        /*
+        ====================================
+        SEND DETAILS TO TEAM
+        ====================================
+        */
 
         await sendMessage(
           teamNumber,
           escalationMessage
         );
+
+        /*
+        ====================================
+        SEND IMAGE TO TEAM
+        ====================================
+        */
+
+        await fetch(
+          `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+
+              Authorization:
+                `Bearer ${process.env.WHATSAPP_TOKEN}`,
+            },
+
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+
+              to: teamNumber,
+
+              type: "image",
+
+              image: {
+                id: imageId
+              }
+            }),
+          }
+        );
+
+        /*
+        ====================================
+        CONFIRM TO STUDENT
+        ====================================
+        */
 
         await sendMessage(
           from,
@@ -230,6 +230,17 @@ Our support team will contact you shortly 😊`
 
         return res.sendStatus(200);
       }
+
+      /*
+      ====================================
+      HANDLE TEXT MESSAGE
+      ====================================
+      */
+
+      const text =
+        message.text.body.toLowerCase().trim();
+
+      console.log("Student:", text);
 
       /*
       ====================================
@@ -254,33 +265,25 @@ Our support team will contact you shortly 😊`
 
       /*
       ====================================
-      MAIN MENU
+      RESET CHAT
       ====================================
       */
 
       if (
-        text === "hi" ||
-        text === "hello" ||
-        text === "hey"
+        text === "reset" ||
+        text === "restart"
       ) {
 
-        userSessions[from] = "main_menu";
+        sessions[from] = [];
+        userSessions[from] = null;
+        delete escalationData[from];
 
         await sendMessage(
           from,
 
-`👋 Welcome to Blackbucks Internship Support
+`✅ Your chat session has been reset.
 
-Please choose an option:
-
-1️⃣ Internship Registration
-2️⃣ TapTap Website Support
-3️⃣ Offer Letter Query
-4️⃣ Internship Details
-5️⃣ Payment Issue
-6️⃣ Certificate Query
-
-Type your issue anytime if you need support 😊`
+Send Hi to start again.`
         );
 
         return res.sendStatus(200);
@@ -288,68 +291,93 @@ Type your issue anytime if you need support 😊`
 
       /*
       ====================================
-      ISSUE DETECTION
-      ====================================
-      */
-
-      const issueKeywords = [
-        "payment",
-        "login",
-        "dashboard",
-        "certificate",
-        "offer letter",
-        "portal",
-        "not working",
-        "issue",
-        "problem",
-        "error",
-        "pay now",
-        "unable",
-        "failed",
-        "lms",
-        "tap tap",
-        "taptap"
-      ];
-
-      const hasIssue =
-        issueKeywords.some(keyword =>
-          text.includes(keyword)
-        );
-
-      /*
-      ====================================
-      START ESCALATION FLOW
+      SMART GREETING FLOW
       ====================================
       */
 
       if (
-        hasIssue &&
-        userSessions[from] !==
-          "collect_issue_details" &&
-        userSessions[from] !==
-          "waiting_for_screenshot"
+        text === "hi" ||
+        text === "hello" ||
+        text === "hey" ||
+        text === "hii" ||
+        text === "hi i have a question" ||
+        text === "i have a question"
+      ) {
+
+        userSessions[from] =
+          "waiting_for_query";
+
+        await sendMessage(
+          from,
+
+`👋 Hi, how are you? 😊
+
+I'm the Blackbucks AI Support Assistant.
+
+How can I help you today?`
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      FALLBACK MENU
+      ====================================
+      */
+
+      if (
+        userSessions[from] ===
+        "waiting_for_query"
+      ) {
+
+        await sendMessage(
+          from,
+
+`📌 Please choose your issue category:
+
+1️⃣ Login Issues
+2️⃣ Payment Issues
+3️⃣ Offer Letter
+4️⃣ Live Classes
+5️⃣ Lesson Plans
+6️⃣ Certificates
+7️⃣ Domain Change
+8️⃣ Test / Exam / Hackathon Issues
+
+Or explain your issue in detail 😊`
+        );
+
+        userSessions[from] = null;
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      LOGIN ISSUE FLOW
+      ====================================
+      */
+
+      if (
+        text.includes("login") ||
+        text.includes("unable to login") ||
+        text.includes("taptap login") ||
+        text.includes("tap tap login")
       ) {
 
         userSessions[from] =
           "collect_issue_details";
 
         escalationData[from] = {
-          issue: text
+          issue:
+            "TapTap LMS Login Issue"
         };
 
         await sendMessage(
           from,
 
-`✅ Please don’t worry 😊
-
-The registration/payment website and TapTap LMS are different platforms.
-
-• Registration website → internship registration & payment
-• TapTap LMS → classes, lesson plans, assessments, assignments, activities
-
-Sometimes the registration dashboard may still show "Pay Now" even after successful payment. This is normal in many cases.
-
-📌 Please share:
+`📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ College Name
@@ -357,12 +385,10 @@ Sometimes the registration dashboard may still show "Pay Now" even after success
 4️⃣ Roll Number
 5️⃣ Registered Phone Number
 
-📸 Also upload:
-• Screenshot
+📸 After sharing details, please upload:
+• screenshot
 OR
-• Screen recording of the issue
-
-This helps our support team resolve your issue faster.`
+• screen recording of the issue 😊`
         );
 
         return res.sendStatus(200);
@@ -370,7 +396,7 @@ This helps our support team resolve your issue faster.`
 
       /*
       ====================================
-      COLLECT DETAILS
+      COLLECT LOGIN ISSUE DETAILS
       ====================================
       */
 
@@ -388,12 +414,168 @@ This helps our support team resolve your issue faster.`
         await sendMessage(
           from,
 
-`📸 Thank you.
+`📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
 OR
+• screen recording
+
+This helps our support team identify the exact issue faster 😊`
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      DOMAIN CHANGE FLOW
+      ====================================
+      */
+
+      if (
+        text.includes("domain change") ||
+        text.includes("change domain") ||
+        text.includes("change my domain") ||
+        text.includes("switch domain") ||
+        text.includes("change specialization") ||
+        text.includes("change course")
+      ) {
+
+        userSessions[from] =
+          "collect_domain_change_details";
+
+        escalationData[from] = {
+          issue:
+            "Domain Change Request"
+        };
+
+        await sendMessage(
+          from,
+
+`📋 Please share the following details for domain change request:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Registered Mobile Number
+4️⃣ Existing Domain
+5️⃣ New Domain Requested
+
+📸 After sharing details, please upload:
+• payment screenshot
+OR
+• offer letter screenshot 😊`
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      COLLECT DOMAIN CHANGE DETAILS
+      ====================================
+      */
+
+      if (
+        userSessions[from] ===
+        "collect_domain_change_details"
+      ) {
+
+        escalationData[from].details =
+          text;
+
+        userSessions[from] =
+          "waiting_for_screenshot";
+
+        await sendMessage(
+          from,
+
+`📸 Thank you for sharing your details.
+
+Now please upload:
+• payment screenshot
+OR
+• offer letter screenshot
+
+Your domain change request will be reviewed by the support team 😊`
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      TEST / HACKATHON / EXAM ISSUE FLOW
+      ====================================
+      */
+
+      if (
+        text.includes("test link") ||
+        text.includes("exam link") ||
+        text.includes("hackathon") ||
+        text.includes("assessment error") ||
+        text.includes("exam error") ||
+        text.includes("test error") ||
+        text.includes("unable to start test") ||
+        text.includes("unable to attend exam")
+      ) {
+
+        userSessions[from] =
+          "collect_exam_issue";
+
+        escalationData[from] = {
+          issue:
+            "Test / Hackathon / Exam Issue"
+        };
+
+        await sendMessage(
+          from,
+
+`📋 Please share the following details:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Registered Mobile Number
+4️⃣ Roll Number
+5️⃣ Test / Hackathon / Exam Link
+
+📸 Also upload:
+• screenshot
+OR
 • screen recording of the issue 😊`
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      COLLECT EXAM ISSUE DETAILS
+      ====================================
+      */
+
+      if (
+        userSessions[from] ===
+        "collect_exam_issue"
+      ) {
+
+        escalationData[from].details =
+          text;
+
+        userSessions[from] =
+          "waiting_for_screenshot";
+
+        await sendMessage(
+          from,
+
+`📸 Thank you for sharing your details.
+
+Now please upload:
+• screenshot
+OR
+• screen recording of the issue
+
+Your issue will be escalated to the support team immediately 😊`
         );
 
         return res.sendStatus(200);
@@ -416,68 +598,137 @@ OR
               content: `
 You are Blackbucks AI Internship Support Assistant.
 
-You ONLY help students regarding:
-- internship support
+Your role is ONLY to help students regarding:
+- internships
 - TapTap LMS
-- payments
+- classes
 - offer letters
-- lesson plans
 - assessments
 - certificates
-- internship classes
+- internship support
 
-=========================================
+====================================
+IMPORTANT RULES
+====================================
+
+- Be professional and friendly
+- Keep replies short and WhatsApp-friendly
+- Use emojis naturally
+- Solve student queries clearly
+- Never give fake information
+
+====================================
 IMPORTANT INFORMATION
-=========================================
+====================================
 
-1. Dashboard showing "Pay Now" can be normal.
+Internship Registration:
+https://internships.blackbucks.me
 
-The registration website is mainly for:
-- internship registration
-- internship payment
-
-After payment:
-- classes
-- lesson plans
-- assessments
-- assignments
-- internship activities
-
-are handled through:
-- TapTap LMS
-- official WhatsApp groups
-
-2. Classes happen Monday to Saturday.
-
-3. No classes on Sunday.
-
-4. Assignment links and timings are shared in WhatsApp groups.
-
-5. Each domain has separate lesson plans.
-
-6. Share lesson plan links ONLY if:
-- student completed payment
-AND
-- student received offer letter.
-
-7. If students face login issues:
-collect:
-- roll number
-- email
-- phone number
-- screenshot proof
-
-Then support team will handle it.
-
-=========================================
-TAPTAP LMS
-=========================================
-
+TapTap LMS:
 https://taptap.blackbucks.me
 
-=========================================
-LESSON PLANS
-=========================================
+Offer letters:
+24-48 working hours after payment verification.
+
+====================================
+LIVE CLASSES INFORMATION
+====================================
+
+Live classes are conducted through Zoom.
+
+Weekly class schedules are shared every Sunday in the official WhatsApp group for the upcoming week.
+
+Live Zoom class links are shared directly in the official WhatsApp group before each session starts.
+
+Classes are conducted:
+- 2-3 times per week
+- Saturdays also
+
+No live classes on Sundays.
+
+Assignments, assessments, and activity links are shared in the WhatsApp groups.
+
+TapTap LMS does NOT host live classes.
+
+TapTap LMS is used for:
+- recorded class videos
+- lesson plans
+- assignments
+- assessments
+- activities
+
+If a student asks:
+- "Where will we get live classes?"
+- "Where is the class link?"
+- "How to attend classes?"
+- "Where do we get Zoom link?"
+
+Reply:
+"The weekly class schedule is shared every Sunday in your official WhatsApp group 😊
+
+The live Zoom class links are shared directly in the WhatsApp group before every class."
+
+If a student says:
+- "I missed the class"
+- "I couldn't attend the class"
+- "I missed live session"
+
+Reply:
+"The recorded session will be available in your lesson plan inside TapTap LMS 😊"
+
+====================================
+PAYMENT & DASHBOARD INFORMATION
+====================================
+
+The registration/payment website and TapTap LMS are different platforms.
+
+Registration website:
+used only for:
+- internship registration
+- payment
+
+TapTap LMS:
+used for:
+- classes
+- lesson plans
+- assignments
+- assessments
+- activities
+
+Sometimes the registration dashboard may still show "Pay Now" even after successful payment.
+
+This is normal in many cases.
+
+====================================
+TEST / HACKATHON / EXAM SUPPORT
+====================================
+
+If a student asks regarding:
+- test link issue
+- hackathon issue
+- exam issue
+- assessment issue
+- unable to start test
+- exam link not working
+
+Ask the student to share:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Registered Mobile Number
+4️⃣ Roll Number
+5️⃣ Test / Exam / Hackathon Link
+
+Then ask the student to upload:
+- screenshot
+OR
+- screen recording
+
+Then escalate the issue to the support team immediately.
+
+====================================
+LESSON PLAN LINKS
+====================================
 
 Quantum Systems Engineer:
 https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80081&testType=collegeLessonPlan
@@ -527,18 +778,46 @@ https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80084&testType=collegeLess
 Growth Marketing & CRM Specialist:
 https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80088&testType=collegeLessonPlan
 
-=========================================
-AI BEHAVIOR
-=========================================
+====================================
+IMPORTANT CONDITION
+====================================
 
-- Reply professionally
-- Use friendly tone
-- Use emojis naturally
-- Keep replies short
-- Understand Telugu and English
-- Avoid robotic replies
-- Never generate fake information
-- If unclear ask student politely
+Only share lesson plan links if:
+- student completed payment
+AND
+- student received offer letter
+
+====================================
+DOMAIN CHANGE SUPPORT
+====================================
+
+If a student asks regarding:
+- domain change
+- changing internship domain
+- switching domain
+- changing course
+- changing specialization
+
+Then do NOT directly answer.
+
+Ask the student to share:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Registered Mobile Number
+4️⃣ Existing Domain
+5️⃣ New Domain Requested
+
+After collecting details, ask the student to upload:
+- payment screenshot
+OR
+- offer letter screenshot
+
+Then escalate the issue to the support team.
+
+Tell the student:
+
+"Your domain change request will be reviewed by the support team 😊"
 `
             },
 
