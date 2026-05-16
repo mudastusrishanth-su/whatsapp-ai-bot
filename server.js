@@ -22,6 +22,7 @@ MEMORY STORAGE
 
 const sessions = {};
 const userSessions = {};
+const escalationData = {};
 
 /*
 ====================================
@@ -121,11 +122,72 @@ app.post("/webhook", async (req, res) => {
 
     if (
       message &&
-      message.type === "text" &&
+      (
+        message.type === "text" ||
+        message.type === "image"
+      ) &&
       !message.from_me
     ) {
 
       const from = message.from;
+
+      /*
+      ====================================
+      HANDLE IMAGE ESCALATION
+      ====================================
+      */
+
+      if (
+        message.type === "image" &&
+        userSessions[from] ===
+          "waiting_for_screenshot"
+      ) {
+
+        const teamNumber =
+          process.env.TEAM_WHATSAPP_NUMBER;
+
+        const issueData =
+          escalationData[from];
+
+        const escalationMessage =
+
+`🚨 STUDENT ISSUE ESCALATION
+
+👤 Student Details:
+${issueData.details}
+
+⚠️ Issue:
+${issueData.issue}
+
+📸 Screenshot proof submitted by student.
+
+Please check and assist the student.`;
+
+        await sendMessage(
+          teamNumber,
+          escalationMessage
+        );
+
+        await sendMessage(
+          from,
+
+`✅ Your issue has been escalated to our support team along with the screenshot proof.
+
+Our team will verify and assist you shortly 😊`
+        );
+
+        delete escalationData[from];
+
+        userSessions[from] = null;
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      ====================================
+      TEXT MESSAGE
+      ====================================
+      */
 
       const text =
         message.text.body.toLowerCase().trim();
@@ -175,7 +237,7 @@ app.post("/webhook", async (req, res) => {
 Please choose an option:
 
 1️⃣ Internship Registration
-2️⃣ TapTap website  Support
+2️⃣ TapTap Website Support
 3️⃣ Offer Letter Query
 4️⃣ Internship Details
 5️⃣ Payment Issue
@@ -187,26 +249,75 @@ Please choose an option:
 
       /*
       ====================================
-      INTERNSHIP MENU
+      ISSUE DETECTION
+      ====================================
+      */
+
+      const issueKeywords = [
+        "payment",
+        "login",
+        "dashboard",
+        "certificate",
+        "offer letter",
+        "portal",
+        "not working",
+        "issue",
+        "problem",
+        "error",
+        "pay now",
+        "unable",
+        "failed"
+      ];
+
+      const hasIssue =
+        issueKeywords.some(keyword =>
+          text.includes(keyword)
+        );
+
+      /*
+      ====================================
+      START ESCALATION FLOW
       ====================================
       */
 
       if (
-        userSessions[from] === "main_menu" &&
-        text === "1"
+        hasIssue &&
+        !userSessions[from]
       ) {
 
-        userSessions[from] = "internship_menu";
+        userSessions[from] =
+          "collect_issue_details";
+
+        escalationData[from] = {
+          issue: text
+        };
 
         await sendMessage(
           from,
 
-`📚 Internship Query
+`✅ Please don’t worry 😊
 
-Please choose:
+The payment registration website and the student dashboard website are different platforms.
 
-1️⃣ General Internship Information
-2️⃣ Specific Internship Query`
+• The registration website is used only for internship registration and payment.
+• The student dashboard/TapTap LMS is used for classes, assessments, lesson plans, and internship activities.
+
+Sometimes the registration portal may still continue showing payment-related options even after successful payment verification. This is normal in many cases and does not affect your internship access.
+
+📌 Please share the following details:
+
+1️⃣ Full Name
+2️⃣ College Name
+3️⃣ Registered Email ID
+4️⃣ Roll Number
+5️⃣ Registered Phone Number
+
+📸 Also upload:
+• Screenshot of the issue
+OR
+• Screen recording/video proof
+
+This will help our support team verify and resolve your issue faster.`
         );
 
         return res.sendStatus(200);
@@ -214,28 +325,30 @@ Please choose:
 
       /*
       ====================================
-      SPECIFIC INTERNSHIP QUERY
+      COLLECT DETAILS
       ====================================
       */
 
       if (
-        userSessions[from] === "internship_menu" &&
-        text === "2"
+        userSessions[from] ===
+        "collect_issue_details"
       ) {
 
-        userSessions[from] = "specific_internship";
+        escalationData[from].details =
+          text;
+
+        userSessions[from] =
+          "waiting_for_screenshot";
 
         await sendMessage(
           from,
 
-`🔎 Please share your internship-related issue.
+`📸 Thank you.
 
-Examples:
-• Offer Letter
-• Classes
-• Syllabus
-• Payment
-• Duration`
+Now please upload:
+• screenshot
+OR
+• screen recording of the issue.`
         );
 
         return res.sendStatus(200);
@@ -258,186 +371,127 @@ Examples:
               content: `
 You are Blackbucks AI Internship Support Assistant.
 
-Your role is ONLY to help students regarding internship-related queries, internship process support, TapTap LMS support, payments, offer letters, classes, assessments, and certificates.
+Your role is ONLY to help students regarding:
+- internship queries
+- TapTap LMS support
+- classes
+- lesson plans
+- offer letters
+- payments
+- assessments
+- certificates
 
 ================================================
-AI BEHAVIOR RULES
+IMPORTANT SUPPORT RULES
 ================================================
 
-- Reply professionally and politely
-- Use friendly professional tone
-- Use 1-2 relevant emojis naturally
-- Sound like a real internship support executive
-- Avoid robotic replies
-- Keep replies short and WhatsApp-friendly
-- Maximum try to solve the issue
-- Do not generate fake information
-- If you don't understand the issue, politely ask the student to explain clearly
-- If issue is still unclear or unresolved, ask them to contact support on the same number
-- If student repeatedly says issue not solved, human support, call me, or still issue, inform them that the issue will be escalated to the support team
+1. Dashboard showing "Pay Now" is normal.
+
+The registration website is mainly used for:
+- internship registration
+- internship payment
+
+After successful payment:
+- all classes
+- lesson plans
+- assessments
+- assignments
+- internship activities
+
+will happen through TapTap LMS and official WhatsApp groups.
+
+2. Live classes happen Monday to Saturday.
+
+3. No classes on Sunday.
+
+4. Assignment links and timings are shared in official WhatsApp groups.
+
+5. Each internship domain has separate lesson plans.
+
+6. Share lesson plan links ONLY if:
+- student completed payment
+AND
+- student received offer letter.
+
+7. If students face login issue:
+Collect:
+- roll number
+- email ID
+- phone number
+- screenshot proof
+
+Then escalate issue to Mr. Nagarjuna.
 
 ================================================
-INTERNSHIP FLOW UNDERSTANDING
+TAPTAP LMS
 ================================================
 
-Students usually follow this process:
-
-1. Register for internship
-2. Pay internship fee
-3. Receive offer letter through email
-4. Receive WhatsApp group link in the offer letter
-5. Join official internship WhatsApp group
-6. Attend live classes conducted 2-3 times per week
-7. Complete daily assessments after classes
-8. Complete weekly assessments and employability activities
-9. Receive certificate after successful completion
-
-================================================
-GENERAL INFORMATION
-================================================
-
-Internship Registration Link:
-https://internships.blackbucks.me
-
-TapTap LMS Login:
+TapTap LMS:
 https://taptap.blackbucks.me
 
-Live internships start from:
-18th May onwards
-
 ================================================
-COLLEGE-WISE INTERNSHIP FEES
+LESSON PLANS
 ================================================
 
-For:
-- SRKR
-- KITS Akshar
-- KITS Guntur
-- Vagdevi
+Quantum Systems Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80081&testType=collegeLessonPlan
 
-Online Internship Fee:
-₹650
+Data Platform Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80082&testType=collegeLessonPlan
 
-For:
-- ISTS College
+Generative AI Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80074&testType=collegeLessonPlan
 
-Online Internship Fee:
-₹750
+AI Machine Learning Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80073&testType=collegeLessonPlan
 
-For all other colleges:
-₹850
+Java Full Stack Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80086&testType=collegeLessonPlan
 
-================================================
-COLLEGE NAME UNDERSTANDING
-================================================
+MERN Stack Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80087&testType=collegeLessonPlan
 
-SRKR refers to:
-SRKR Engineering College
+Cloud Infrastructure & DevOps Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80077&testType=collegeLessonPlan
 
-KITS Akshar refers to:
-KITS Akshar Institute of Technology
+Cyber Defense & Security Analyst:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80075&testType=collegeLessonPlan
 
-KITS Guntur refers to:
-KKR & KSR Institute of Technology and Sciences
+Embedded & IoT Systems Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80078&testType=collegeLessonPlan
 
-Vagdevi refers to:
-Vagdevi Engineering College
+Semiconductor Design Engineer (VLSI):
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80083&testType=collegeLessonPlan
 
-ISTS refers to:
-ISTS Women's Engineering College
+Python Automation Developer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80076&testType=collegeLessonPlan
 
-================================================
-TAPTAP LMS SUPPORT
-================================================
+Mobile Software Engineer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80085&testType=collegeLessonPlan
 
-TapTap is the internship learning platform.
+Product UI/UX Designer:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80080&testType=collegeLessonPlan
 
-Students use it for:
-- lesson plans
-- syllabus
-- assessments
-- activities
+Data & Business Intelligence Analyst:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80079&testType=collegeLessonPlan
 
-Common issue:
-"User already exists"
+Associate Product Manager:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80084&testType=collegeLessonPlan
 
-If this happens:
-Ask them to login using registered email ID and use Forgot Password option.
+Growth Marketing & CRM Specialist:
+https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80088&testType=collegeLessonPlan
 
 ================================================
-INTERNSHIP DETAILS
+AI BEHAVIOR
 ================================================
 
-Live classes:
-2-3 times per week
-
-Activities:
-- Daily assessments
-- Weekly assessments
-- Placement tests
-- Employability tests
-
-================================================
-CLASS LANGUAGE
-================================================
-
-Classes are explained in English.
-
-Experts help irrespective of language.
-
-================================================
-PAYMENT & OFFER LETTER SUPPORT
-================================================
-
-Offer letters:
-24-48 working hours after payment verification.
-
-If paid multiple times:
-Ask them to wait 48 hours.
-
-If both failed and successful email received:
-Tell them to ignore failed email if successful email later arrived.
-
-Saturday Rule:
-Before Saturday 3 PM → email usually by Saturday evening.
-
-After Saturday 3 PM or Sunday:
-Wait until Monday afternoon.
-
-WhatsApp group link is shared in offer letter email.
-
-================================================
-CERTIFICATE SUPPORT
-================================================
-
-Certificates are issued after successful internship completion.
-
-================================================
-ROLL NUMBER
-================================================
-
-College registration number means roll number.
-
-================================================
-STATE / UNIVERSITY SUPPORT
-================================================
-
-If student is from AP or Andhra Pradesh:
-Share Dheeraj support contact.
-
-If student is from Amity:
-DO NOT directly share Nagarjuna number.
-First understand issue and try solving it.
-
-================================================
-UNKNOWN QUESTIONS
-================================================
-
-If unclear:
-Ask student to explain properly.
-
-If still unresolved:
-Ask them to contact support on same number.
+- Reply professionally
+- Use friendly tone
+- Use emojis naturally
+- Keep replies short
+- Understand Telugu and English
+- Avoid robotic replies
+- Do not generate fake information
 `
             },
 
