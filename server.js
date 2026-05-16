@@ -322,7 +322,62 @@ How can I help you today?`
 
       /*
 ====================================
-SMART FALLBACK MENU
+/*
+====================================
+AI INTENT DETECTION
+====================================
+*/
+
+const intentCheck =
+  await groq.chat.completions.create({
+
+    messages: [
+
+      {
+        role: "system",
+
+        content: `
+You are an AI intent classifier.
+
+Understand the student's query intelligently.
+
+Reply ONLY with ONE keyword:
+
+LOGIN_ISSUE
+PAYMENT_ISSUE
+LIVE_CLASS
+DOMAIN_CHANGE
+EXAM_ISSUE
+LESSON_PLAN
+CERTIFICATE
+GENERAL_SUPPORT
+
+No explanation.
+`
+      },
+
+      {
+        role: "user",
+        content: text
+      }
+    ],
+
+    model: "llama-3.1-8b-instant",
+  });
+
+const detectedIntent =
+  intentCheck.choices[0]
+  .message.content
+  .trim();
+
+console.log(
+  "Detected Intent:",
+  detectedIntent
+);
+
+/*
+====================================
+SMART AI ISSUE FLOW
 ====================================
 */
 
@@ -333,15 +388,13 @@ if (
 
   /*
   ====================================
-  DIRECT ISSUE DETECTION
+  LOGIN ISSUE
   ====================================
   */
 
   if (
-    text.includes("login") ||
-    text.includes("unable to login") ||
-    text.includes("taptap") ||
-    text.includes("tap tap")
+    detectedIntent ===
+    "LOGIN_ISSUE"
   ) {
 
     userSessions[from] =
@@ -374,16 +427,48 @@ OR
 
   /*
   ====================================
-  DOMAIN CHANGE DETECTION
+  PAYMENT ISSUE
   ====================================
   */
 
   if (
-    text.includes("domain change") ||
-    text.includes("change domain") ||
-    text.includes("switch domain") ||
-    text.includes("change specialization") ||
-    text.includes("change course")
+    detectedIntent ===
+    "PAYMENT_ISSUE"
+  ) {
+
+    await sendMessage(
+      from,
+
+`✅ Please don’t worry 😊
+
+The internship registration/payment website and TapTap LMS are different platforms.
+
+• Registration website → internship registration & payment
+• TapTap LMS → classes, lesson plans, assessments, assignments, activities
+
+Sometimes the dashboard may still show "Pay Now" even after successful payment. This is normal in many cases.
+
+📩 Offer letters are usually shared within 24-48 working hours after payment verification.
+
+📱 Official WhatsApp group links and internship instructions are shared through your offer letter email.
+
+🎥 Live classes are conducted through Zoom and schedules are shared weekly in the WhatsApp group.`
+    );
+
+    userSessions[from] = null;
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  ====================================
+  DOMAIN CHANGE ISSUE
+  ====================================
+  */
+
+  if (
+    detectedIntent ===
+    "DOMAIN_CHANGE"
   ) {
 
     userSessions[from] =
@@ -416,15 +501,13 @@ OR
 
   /*
   ====================================
-  TEST / EXAM ISSUE DETECTION
+  TEST / EXAM ISSUE
   ====================================
   */
 
   if (
-    text.includes("test") ||
-    text.includes("exam") ||
-    text.includes("hackathon") ||
-    text.includes("assessment")
+    detectedIntent ===
+    "EXAM_ISSUE"
   ) {
 
     userSessions[from] =
@@ -457,7 +540,48 @@ OR
 
   /*
   ====================================
-  SHOW MENU ONLY IF ISSUE UNCLEAR
+  LIVE CLASS QUESTIONS
+  ====================================
+  */
+
+  if (
+    detectedIntent ===
+    "LIVE_CLASS"
+  ) {
+
+    if (
+      text.includes("missed") ||
+      text.includes("couldn't attend") ||
+      text.includes("not attended")
+    ) {
+
+      await sendMessage(
+        from,
+
+`📚 The recorded session will be available in your lesson plan inside TapTap LMS 😊`
+      );
+
+    } else {
+
+      await sendMessage(
+        from,
+
+`📅 The weekly class schedule is shared every Sunday in your official WhatsApp group 😊
+
+🎥 Live classes are conducted through Zoom.
+
+🔗 Zoom links are shared directly in the WhatsApp group before every class session starts.
+
+📚 Recorded sessions will later be available inside TapTap LMS lesson plans.`
+      );
+    }
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  ====================================
+  SHOW MENU ONLY IF UNCLEAR
   ====================================
   */
 
@@ -482,46 +606,6 @@ Or explain your issue in detail 😊`
 
   return res.sendStatus(200);
 }
-      /*
-      ====================================
-      LOGIN ISSUE FLOW
-      ====================================
-      */
-
-      if (
-        text.includes("login") ||
-        text.includes("unable to login") ||
-        text.includes("taptap login") ||
-        text.includes("tap tap login")
-      ) {
-
-        userSessions[from] =
-          "collect_issue_details";
-
-        escalationData[from] = {
-          issue:
-            "TapTap LMS Login Issue"
-        };
-
-        await sendMessage(
-          from,
-
-`📋 Please share the following details:
-
-1️⃣ Full Name
-2️⃣ College Name
-3️⃣ Registered Email ID
-4️⃣ Roll Number
-5️⃣ Registered Phone Number
-
-📸 After sharing details, please upload:
-• screenshot
-OR
-• screen recording of the issue 😊`
-        );
-
-        return res.sendStatus(200);
-      }
 
       /*
       ====================================
