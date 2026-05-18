@@ -275,7 +275,7 @@ Send Hi to start again 😊`
       GREETING FLOW
       ====================================
       */
-      text = text.toLowerCase().trim();
+      
       if (
         text === "hi" ||
         text === "hello" ||
