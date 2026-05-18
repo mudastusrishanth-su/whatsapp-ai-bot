@@ -295,57 +295,56 @@ How can I help you today?`
               role: "system",
 
               content: `
-You are an AI intent classifier.
+You are an AI intent classifier for Blackbucks Support.
 
-Identify the user's support issue category.
-
-Identify ONLY if the student clearly needs escalation or support-team intervention.
+Your job is ONLY to identify whether the student needs SUPPORT TEAM ESCALATION.
 
 Reply ONLY with ONE keyword:
 
 LOGIN_ISSUE
-→ only for:
-login problem
-cannot login
-password issue
-dashboard issue
-website access issue
+→ ONLY if student cannot login, dashboard not opening, password issue, access issue, LMS technical issue.
 
 PAYMENT_ISSUE
-→ only for:
-payment deducted
-offer letter not received after 48 hours
-payment verification issue
+→ ONLY if payment deducted, payment failed, payment verification issue, offer letter not received AFTER 48 working hours.
 
 DOMAIN_CHANGE
-→ only for:
-change domain
-change stream
-switch internship
+→ ONLY if student clearly wants to:
+
+* change domain
+* switch internship stream
+* change specialization
 
 EXAM_ISSUE
-→ only for:
-exam link not working
-test link error
-hackathon issue
-assessment technical issue
+→ ONLY if:
+
+* exam link not working
+* test link issue
+* hackathon issue
+* assessment technical problem
 
 GENERAL_SUPPORT
 → for ALL normal questions including:
-- class timings
-- live class schedule
-- zoom links
-- recordings
-- resources
-- internship details
-- domains
-- projects
-- certificates
-- lesson plans
-- learning process
-- classes start date
-- recordings
-- internship information
+
+* internship details
+* domains available
+* internship duration
+* internship cost
+* live classes
+* zoom links
+* schedules
+* recordings
+* lesson plans
+* resources
+* projects
+* certificates
+* class timings
+* course information
+* general doubts
+
+IMPORTANT:
+If the user is ONLY asking information or doubts,
+ALWAYS reply:
+GENERAL_SUPPORT
 
 Reply ONLY with the keyword.
 No explanation.
@@ -522,40 +521,10 @@ OR
       }
 
       /*
-      ====================================
-      LESSON PLAN FLOW
-      ====================================
-      */
-
-      if (
-        detectedIntent ===
-        "LESSON_PLAN"
-      ) {
-
-        await sendMessage(
-          from,
-
-          `📚 Please share your internship domain name.
-
-Example:
-• AIML
-• Java Full Stack
-• MERN
-• UI/UX
-• DevOps
-• Generative AI
-
-I'll share the lesson plan accordingly 😊`
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      COLLECT LOGIN ISSUE DETAILS
-      ====================================
-      */
+====================================
+COLLECT LOGIN ISSUE DETAILS
+====================================
+*/
 
       if (
         userSessions[from] ===
