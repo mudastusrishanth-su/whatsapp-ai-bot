@@ -299,14 +299,55 @@ You are an AI intent classifier.
 
 Identify the user's support issue category.
 
+Identify ONLY if the student clearly needs escalation or support-team intervention.
+
 Reply ONLY with ONE keyword:
 
 LOGIN_ISSUE
-PAYMENT_ISSUE
-DOMAIN_CHANGE
-EXAM_ISSUE
-GENERAL_SUPPORT
+→ only for:
+login problem
+cannot login
+password issue
+dashboard issue
+website access issue
 
+PAYMENT_ISSUE
+→ only for:
+payment deducted
+offer letter not received after 48 hours
+payment verification issue
+
+DOMAIN_CHANGE
+→ only for:
+change domain
+change stream
+switch internship
+
+EXAM_ISSUE
+→ only for:
+exam link not working
+test link error
+hackathon issue
+assessment technical issue
+
+GENERAL_SUPPORT
+→ for ALL normal questions including:
+- class timings
+- live class schedule
+- zoom links
+- recordings
+- resources
+- internship details
+- domains
+- projects
+- certificates
+- lesson plans
+- learning process
+- classes start date
+- recordings
+- internship information
+
+Reply ONLY with the keyword.
 No explanation.
 `
             },
