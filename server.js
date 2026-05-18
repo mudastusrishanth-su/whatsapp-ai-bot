@@ -128,8 +128,7 @@ if (!message) {
   return res.sendStatus(200);
 }
 
-const text = message?.text?.body;
-
+const rawText = message?.text?.body;
 // Ignore non-text messages
 if (!text) {
   console.log("No text body found");
@@ -239,7 +238,7 @@ Our support team will contact you shortly 😊`
       */
 
       const text =
-        message.text.body.toLowerCase().trim();
+  rawText.toLowerCase().trim();
 
       console.log("Student:", text);
 
@@ -274,14 +273,14 @@ Send Hi to start again 😊`
       GREETING FLOW
       ====================================
       */
-
+      text = text.toLowerCase().trim();
       if (
         text === "hi" ||
         text === "hello" ||
         text === "hey" ||
-        text === "hii" ||
-        text === "i have a question"
-      ) {
+        text === "hii" 
+        
+    ) {
 
         userSessions[from] =
           "waiting_for_query";
@@ -331,7 +330,15 @@ LOGIN_ISSUE
 → ONLY if student cannot login, dashboard not opening, password issue, access issue, LMS technical issue.
 
 PAYMENT_ISSUE
-→ ONLY if payment deducted, payment failed, payment verification issue, offer letter not received AFTER 48 working hours.
+
+→ ONLY if:
+• payment deducted
+• payment failed
+• payment pending
+• payment verification issue
+• dashboard still shows pay now
+
+DO NOT classify offer letter delays or onboarding email delays as PAYMENT_ISSUE.
 
 DOMAIN_CHANGE
 → ONLY if student clearly wants to:
@@ -487,18 +494,20 @@ if (
     "waiting_offer_letter_confirmation";
 
   await sendMessage(
-    from,
+  from,
 
-`📩 Offer letters are usually shared within 24-48 working hours after payment verification.
+`Please don’t worry 😊
 
-Please also check:
+Offer letters and onboarding emails are usually shared within 24–48 working hours after payment verification.
+
+Please check:
+• Inbox
 • Spam folder
 • Promotions tab
-• All Mail section
 
-If you still haven't received the offer letter after 48 working hours, please reply:
-still not received 😊`
-  );
+If you still haven’t received any email after 48 working hours, please reply:
+still not received`
+);
 
   return res.sendStatus(200);
 }
