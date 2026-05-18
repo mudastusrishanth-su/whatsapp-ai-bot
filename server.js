@@ -22,9 +22,9 @@ MEMORY STORAGE
 ====================================
 */
 
-const sessions = {};
-const userSessions = {};
+const userStates = {};
 const escalationData = {};
+const sessions = {};
 
 /*
 ====================================
