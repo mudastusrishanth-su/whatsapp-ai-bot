@@ -302,6 +302,13 @@ Your job is ONLY to identify whether the student needs SUPPORT TEAM ESCALATION.
 Reply ONLY with ONE keyword:
 
 LOGIN_ISSUE
+PAYMENT_ISSUE
+OFFER_LETTER_ISSUE
+DOMAIN_CHANGE
+EXAM_ISSUE
+GENERAL_SUPPORT
+
+LOGIN_ISSUE
 → ONLY if student cannot login, dashboard not opening, password issue, access issue, LMS technical issue.
 
 PAYMENT_ISSUE
@@ -446,7 +453,36 @@ Sometimes the dashboard may still show "Pay Now" even after successful payment. 
 
         return res.sendStatus(200);
       }
+/*
+====================================
+OFFER LETTER ISSUE FLOW
+====================================
+*/
 
+if (
+  detectedIntent ===
+  "OFFER_LETTER_ISSUE"
+) {
+
+  userSessions[from] =
+    "waiting_offer_letter_confirmation";
+
+  await sendMessage(
+    from,
+
+`📩 Offer letters are usually shared within 24-48 working hours after payment verification.
+
+Please also check:
+• Spam folder
+• Promotions tab
+• All Mail section
+
+If you still haven't received the offer letter after 48 working hours, please reply:
+still not received 😊`
+  );
+
+  return res.sendStatus(200);
+}
       /*
       ====================================
       DOMAIN CHANGE FLOW
@@ -524,7 +560,46 @@ OR
 
         return res.sendStatus(200);
       }
+/*
+====================================
+OFFER LETTER FOLLOW-UP
+====================================
+*/
 
+if (
+  userSessions[from] ===
+  "waiting_offer_letter_confirmation"
+) {
+
+  if (
+    text.includes("still not received") ||
+    text.includes("not received") ||
+    text.includes("didn't receive")
+  ) {
+
+    userSessions[from] =
+      "collect_offer_letter_issue";
+
+    escalationData[from] = {
+      issue:
+        "Offer Letter Not Received"
+    };
+
+    await sendMessage(
+      from,
+
+`📋 Please share:
+
+1️⃣ Registered Email ID
+2️⃣ Payment Screenshot
+3️⃣ Payment Date & Time
+
+Our support team will verify and assist you 😊`
+    );
+
+    return res.sendStatus(200);
+  }
+}
       /*
 ====================================
 COLLECT LOGIN ISSUE DETAILS
@@ -619,7 +694,36 @@ OR
 
         return res.sendStatus(200);
       }
+/*
+====================================
+COLLECT OFFER LETTER DETAILS
+====================================
+*/
 
+if (
+  userSessions[from] ===
+  "collect_offer_letter_issue"
+) {
+
+  escalationData[from].details =
+    text;
+
+  userSessions[from] =
+    "waiting_for_screenshot";
+
+  await sendMessage(
+    from,
+
+    `📸 Thank you for sharing the details.
+
+Now please upload:
+• payment screenshot
+OR
+• payment proof 😊`
+  );
+
+  return res.sendStatus(200);
+}
       /*
       ====================================
       CREATE MEMORY
@@ -667,6 +771,7 @@ Your job is to help students regarding:
 - internship process
 
 IMPORTANT RULES:
+- Always use proper grammar and spelling
 - Never claim that you checked internal systems
 - Never say verification completed unless explicitly provided
 - Never generate fake offer letter status
@@ -737,6 +842,19 @@ AND
 ====================================
 REAL SUPPORT EXAMPLES
 ====================================
+Student:
+Is attendance mandatory?
+
+Assistant:
+✅ Yes, attendance is mandatory for internship completion.
+
+Students are expected to:
+• attend live classes
+• complete assignments
+• participate in activities
+• complete assessments
+
+Regular participation is important for successful internship completion and certificate eligibility and AttNDnce will bE shARED TO THE COLLEGE TPO  😊
 
 Student:
 What domains do you provide?
