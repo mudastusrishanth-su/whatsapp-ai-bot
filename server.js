@@ -55,7 +55,6 @@ const ESCALATION_FLOWS = {
   LOGIN_ISSUE: "collect_login_details",
   DOMAIN_CHANGE: "collect_domain_change_details",
   EXAM_ISSUE: "collect_exam_issue",
-  PAYMENT_ISSUE: "collect_payment_issue",
 };
 
 /*
@@ -77,17 +76,21 @@ GREETING CHECK
 */
 
 function isGreeting(text) {
+
+  const clean =
+    text.toLowerCase().trim();
+
   const greetings = [
     "hi",
     "hello",
-    "hlo",
     "hey",
+    "hlo",
     "good morning",
     "good afternoon",
     "good evening",
   ];
 
-  return greetings.some((g) => text.includes(g));
+  return greetings.includes(clean);
 }
 
 /*
@@ -96,7 +99,12 @@ MEMORY
 ====================================
 */
 
-function rememberMessage(from, role, content) {
+function rememberMessage(
+  from,
+  role,
+  content
+) {
+
   if (!sessions[from]) {
     sessions[from] = [];
   }
@@ -116,7 +124,10 @@ SEND MESSAGE
 ====================================
 */
 
-async function sendMessage(to, message) {
+async function sendMessage(
+  to,
+  message
+) {
 
   const response = await fetch(
     `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -124,15 +135,19 @@ async function sendMessage(to, message) {
       method: "POST",
 
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
 
         Authorization:
           `Bearer ${process.env.WHATSAPP_TOKEN}`,
       },
 
       body: JSON.stringify({
-        messaging_product: "whatsapp",
+        messaging_product:
+          "whatsapp",
+
         to,
+
         text: {
           body: message,
         },
@@ -140,18 +155,21 @@ async function sendMessage(to, message) {
     }
   );
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
   console.log(data);
 }
 
 /*
 ====================================
-DETECT INTENT
+INTENT DETECTION
 ====================================
 */
 
-async function detectIntent(text) {
+async function detectIntent(
+  text
+) {
 
   if (
     text.includes("login") ||
@@ -164,8 +182,7 @@ async function detectIntent(text) {
   if (
     text.includes("domain change") ||
     text.includes("change domain") ||
-    text.includes("switch domain") ||
-    text.includes("change specialization")
+    text.includes("switch domain")
   ) {
     return INTENTS.DOMAIN_CHANGE;
   }
@@ -179,9 +196,8 @@ async function detectIntent(text) {
   }
 
   if (
-    text.includes("payment") ||
     text.includes("offer letter") ||
-    text.includes("paid")
+    text.includes("payment")
   ) {
     return INTENTS.PAYMENT_ISSUE;
   }
@@ -201,22 +217,29 @@ START ESCALATION
 ====================================
 */
 
-function startEscalation(from, intent) {
+function startEscalation(
+  from,
+  intent
+) {
 
-  if (intent === INTENTS.LOGIN_ISSUE) {
+  if (
+    intent ===
+    INTENTS.LOGIN_ISSUE
+  ) {
 
     userStates[from] =
       "collect_login_details";
 
     escalationData[from] = {
-      issue: "Login Issue",
+      issue:
+        "TapTap Login Issue",
     };
 
-    return `🔐 Please share the following details:
+    return `🔐 Please share:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
+3️⃣ Mobile Number
 4️⃣ Roll Number
 
 📸 Also upload:
@@ -225,16 +248,20 @@ OR
 • screen recording of the issue 😊`;
   }
 
-  if (intent === INTENTS.DOMAIN_CHANGE) {
+  if (
+    intent ===
+    INTENTS.DOMAIN_CHANGE
+  ) {
 
     userStates[from] =
       "collect_domain_change_details";
 
     escalationData[from] = {
-      issue: "Domain Change Request",
+      issue:
+        "Domain Change Request",
     };
 
-    return `📋 Please share the following details:
+    return `📋 Please share:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -248,40 +275,48 @@ OR
 • offer letter screenshot 😊`;
   }
 
-  if (intent === INTENTS.EXAM_ISSUE) {
+  if (
+    intent ===
+    INTENTS.EXAM_ISSUE
+  ) {
 
     userStates[from] =
       "collect_exam_issue";
 
     escalationData[from] = {
-      issue: "Exam / Test Issue",
+      issue:
+        "Exam / Hackathon Issue",
     };
 
     return `📝 Please share:
 
-1️⃣ Your Registered Email ID
+1️⃣ Registered Email ID
 2️⃣ Exam/Test Link
 3️⃣ Screenshot of the issue
 
 Our support team will assist you shortly 😊`;
   }
 
-  if (intent === INTENTS.PAYMENT_ISSUE) {
+  if (
+    intent ===
+    INTENTS.PAYMENT_ISSUE
+  ) {
 
     userStates[from] =
-      "collect_payment_issue";
+      "waiting_payment_confirmation";
 
-    escalationData[from] = {
-      issue: "Payment Verification Issue",
-    };
+    return `📩 Please don’t worry 😊
 
-    return `💳 Please share:
+Offer letters are usually shared within 24-48 working hours after payment verification.
 
-1️⃣ Registered Email ID
-2️⃣ Payment Screenshot
-3️⃣ Payment Date & Time
+Please check:
+• Spam folder
+• Promotions tab
+• All Mail section
 
-Our support team will verify and assist you 😊`;
+If you still have not received it after 48 working hours, reply:
+
+"still not received" 😊`;
   }
 
   return null;
@@ -307,12 +342,12 @@ function collectEscalationDetails(
 
   return `📸 Thank you for sharing the details.
 
-Now please upload the screenshot/proof related to your issue 😊`;
+Please upload the screenshot/proof related to your issue 😊`;
 }
 
 /*
 ====================================
-SCREENSHOT ESCALATION
+SCREENSHOT HANDLING
 ====================================
 */
 
@@ -324,31 +359,12 @@ async function handleScreenshotEscalation(
   await sendMessage(
     from,
 
-`✅ Your issue has been escalated successfully along with screenshot proof.
+`✅ Your issue has been escalated successfully with screenshot proof.
 
 Our support team will contact you shortly 😊`
   );
 
   resetUser(from);
-}
-
-/*
-====================================
-LESSON PLAN
-====================================
-*/
-
-function getLessonPlanReply(text) {
-
-  return `📚 Lesson plans inside TapTap LMS contain:
-
-• recorded sessions
-• assignments
-• assessments
-• activities
-• study materials
-
-Please check your lesson plan section 😊`;
 }
 
 /*
@@ -366,39 +382,33 @@ async function generateAiReply(
   const systemPrompt = `
 You are Blackbucks AI Support Assistant.
 
-Reply like a friendly human support executive.
+Reply naturally like a friendly human support executive.
 
 Keep replies:
 - short
-- natural
 - WhatsApp style
-- clear
+- natural
 - helpful
+- conversational
 
 Never generate fake information.
 
-LIVE CLASSES:
-- conducted through Zoom
-- schedules shared every Sunday in WhatsApp groups
-- Zoom links shared in WhatsApp groups
-- recordings available in TapTap LMS lesson plans
+IMPORTANT INFORMATION:
 
-If student missed class:
-say recordings available in lesson plans.
+• internships.blackbucks.me is only for registration & payment
+• taptap.blackbucks.me is the LMS dashboard
+• Live classes happen on Zoom
+• Weekly schedules are shared every Sunday
+• Zoom links shared in WhatsApp groups
+• Recorded sessions available in lesson plans
+• Lesson plans contain:
+  - recordings
+  - assignments
+  - assessments
+  - activities
+  - study materials
 
 REAL SUPPORT EXAMPLES:
-
-Student:
-I paid but no offer letter
-
-Assistant:
-Please don’t worry 😊
-
-Offer letters are usually shared within 24-48 working hours after payment verification.
-
-Please share:
-• Registered Email ID
-• Payment Screenshot
 
 Student:
 I missed class
@@ -409,7 +419,7 @@ No problem 😊
 The recorded class session will be available inside your lesson plan in TapTap LMS.
 
 Student:
-Where will we get live classes?
+Where are live classes conducted?
 
 Assistant:
 🎥 Live classes are conducted through Zoom.
@@ -419,12 +429,22 @@ Assistant:
 🔗 Zoom links are shared directly in the WhatsApp group before every session starts.
 
 Student:
-I cannot find resources
+There is no login option
 
 Assistant:
-Please check your lesson plan inside TapTap LMS 😊
+😊 internships.blackbucks.me is only the registration & payment website.
 
-All resources will be available there.
+Your learning dashboard is:
+
+🔗 taptap.blackbucks.me
+
+Student:
+Will there be projects involved?
+
+Assistant:
+Yes 😊
+
+Students will work on assignments, assessments, activities and domain-related practical tasks during the internship.
 `;
 
   const history =
@@ -432,7 +452,9 @@ All resources will be available there.
 
   const completion =
     await groq.chat.completions.create({
-      model: "llama3-70b-8192",
+
+      model:
+        "llama-3.3-70b-versatile",
 
       messages: [
         {
@@ -486,7 +508,8 @@ app.get("/webhook", (req, res) => {
 
   if (
     mode &&
-    token === process.env.VERIFY_TOKEN
+    token ===
+      process.env.VERIFY_TOKEN
   ) {
 
     console.log(
@@ -503,280 +526,324 @@ app.get("/webhook", (req, res) => {
 
 /*
 ====================================
-WEBHOOK
+MAIN WEBHOOK
 ====================================
 */
 
-app.post("/webhook", async (req, res) => {
+app.post(
+  "/webhook",
+  async (req, res) => {
 
-  try {
+    try {
 
-    const message =
-      req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-
-    if (
-      !message ||
-      message.from_me
-    ) {
-      return res.sendStatus(200);
-    }
-
-    const from = message.from;
-
-    /*
-    IMAGE
-    */
-
-    if (message.type === "image") {
+      const message =
+        req.body.entry?.[0]
+          ?.changes?.[0]
+          ?.value?.messages?.[0];
 
       if (
-        userStates[from] ===
-        "waiting_for_screenshot"
+        !message ||
+        message.from_me
       ) {
-
-        await handleScreenshotEscalation(
-          from,
-          message.image.id
-        );
+        return res.sendStatus(200);
       }
 
-      return res.sendStatus(200);
-    }
+      const from =
+        message.from;
 
-    /*
-    ONLY TEXT
-    */
+      /*
+      IMAGE
+      */
 
-    if (
-      message.type !== "text"
-    ) {
-      return res.sendStatus(200);
-    }
+      if (
+        message.type === "image"
+      ) {
 
-    const text =
-      message.text.body
-        .toLowerCase()
-        .trim();
+        if (
+          userStates[from] ===
+          "waiting_for_screenshot"
+        ) {
 
-    console.log(
-      "Student:",
-      text
-    );
+          await handleScreenshotEscalation(
+            from,
+            message.image.id
+          );
+        }
 
-    /*
-    RESET
-    */
+        return res.sendStatus(200);
+      }
 
-    if (
-      text === "reset" ||
-      text === "restart"
-    ) {
+      /*
+      ONLY TEXT
+      */
 
-      resetUser(from);
+      if (
+        message.type !== "text"
+      ) {
+        return res.sendStatus(200);
+      }
 
-      await sendMessage(
-        from,
+      const text =
+        message.text.body
+          .toLowerCase()
+          .trim();
+
+      console.log(
+        "Student:",
+        text
+      );
+
+      /*
+      RESET
+      */
+
+      if (
+        text === "reset" ||
+        text === "restart"
+      ) {
+
+        resetUser(from);
+
+        await sendMessage(
+          from,
 
 `✅ Chat reset successful.
 
 Send Hi to start again 😊`
-      );
+        );
 
-      return res.sendStatus(200);
-    }
+        return res.sendStatus(200);
+      }
 
-    /*
-    GREETING
-    */
+      /*
+      GREETING
+      */
 
-    if (isGreeting(text)) {
+      if (
+        isGreeting(text)
+      ) {
 
-      await sendMessage(
-        from,
+        await sendMessage(
+          from,
 
 `👋 Hi! I'm the Blackbucks AI Support Assistant 😊
 
 Please tell me your issue or question and I’ll help you.`
-      );
+        );
 
-      return res.sendStatus(200);
-    }
+        return res.sendStatus(200);
+      }
 
-    /*
-    MEMORY
-    */
+      /*
+      REGISTRATION WEBSITE CONFUSION
+      */
 
-    rememberMessage(
-      from,
-      "user",
-      text
-    );
+      if (
+        text.includes(
+          "no login option"
+        ) ||
+        text.includes(
+          "only register"
+        ) ||
+        text.includes(
+          "where is login"
+        ) ||
+        text.includes(
+          "cannot find login"
+        )
+      ) {
 
-    /*
-    QUICK REPLIES
-    */
+        const reply =
+`😊 Please don’t worry.
 
-    if (
-      text.includes("missed class")
-    ) {
+internships.blackbucks.me is only the internship registration & payment website.
 
-      const reply =
-`📚 No problem 😊
+Your student learning dashboard is available at:
 
-The recorded class session will be available inside your lesson plan in TapTap LMS.`;
+🔗 taptap.blackbucks.me`;
 
-      await sendMessage(
-        from,
-        reply
-      );
-
-      return res.sendStatus(200);
-    }
-
-    if (
-      text.includes("live class") ||
-      text.includes("zoom link")
-    ) {
-
-      const reply =
-`🎥 Live classes are conducted through Zoom.
-
-📅 Weekly schedules are shared every Sunday in your official WhatsApp group.
-
-🔗 Zoom links are shared directly in the WhatsApp group before every session starts.`;
-
-      await sendMessage(
-        from,
-        reply
-      );
-
-      return res.sendStatus(200);
-    }
-
-    /*
-    COLLECT DETAILS
-    */
-
-    if (
-      [
-        "collect_login_details",
-        "collect_domain_change_details",
-        "collect_exam_issue",
-        "collect_payment_issue",
-      ].includes(userStates[from])
-    ) {
-
-      const reply =
-        collectEscalationDetails(
+        await sendMessage(
           from,
-          userStates[from],
+          reply
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      PAYMENT FOLLOW-UP
+      */
+
+      if (
+        userStates[from] ===
+        "waiting_payment_confirmation"
+      ) {
+
+        if (
+          text.includes(
+            "still not received"
+          ) ||
+          text.includes(
+            "not received"
+          )
+        ) {
+
+          userStates[from] =
+            "collect_payment_issue";
+
+          escalationData[from] =
+            {
+              issue:
+                "Offer Letter / Payment Verification Issue",
+            };
+
+          await sendMessage(
+            from,
+
+`📩 Please share:
+
+1️⃣ Registered Email ID
+2️⃣ Payment Screenshot
+3️⃣ Payment Date & Time
+
+Our support team will verify and assist you 😊`
+          );
+
+          return res.sendStatus(200);
+        }
+      }
+
+      /*
+      SMALL TALK
+      */
+
+      if (
+        text.includes(
+          "how are you"
+        )
+      ) {
+
+        await sendMessage(
+          from,
+
+`😊 I'm doing great and ready to help you.
+
+Please tell me your internship-related query 😊`
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      MEMORY
+      */
+
+      rememberMessage(
+        from,
+        "user",
+        text
+      );
+
+      /*
+      COLLECT DETAILS
+      */
+
+      if (
+        [
+          "collect_login_details",
+          "collect_domain_change_details",
+          "collect_exam_issue",
+          "collect_payment_issue",
+        ].includes(
+          userStates[from]
+        )
+      ) {
+
+        const reply =
+          collectEscalationDetails(
+            from,
+            userStates[from],
+            text
+          );
+
+        await sendMessage(
+          from,
+          reply
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      DETECT INTENT
+      */
+
+      const detectedIntent =
+        await detectIntent(
           text
         );
 
-      await sendMessage(
-        from,
-        reply
+      console.log(
+        "Detected Intent:",
+        detectedIntent
       );
 
-      return res.sendStatus(200);
-    }
+      /*
+      ESCALATION
+      */
 
-    /*
-    DETECT INTENT
-    */
+      if (
+        ESCALATION_FLOWS[
+          detectedIntent
+        ]
+      ) {
 
-    const detectedIntent =
-      await detectIntent(text);
+        const reply =
+          startEscalation(
+            from,
+            detectedIntent
+          );
 
-    console.log(
-      "Detected Intent:",
-      detectedIntent
-    );
-
-    /*
-    ESCALATION
-    */
-
-    if (
-      ESCALATION_FLOWS[
-        detectedIntent
-      ]
-    ) {
-
-      const reply =
-        startEscalation(
+        await sendMessage(
           from,
+          reply
+        );
+
+        return res.sendStatus(200);
+      }
+
+      /*
+      AI FALLBACK
+      */
+
+      const aiReply =
+        await generateAiReply(
+          from,
+          text,
           detectedIntent
         );
 
-      await sendMessage(
+      rememberMessage(
         from,
-        reply
+        "assistant",
+        aiReply
       );
-
-      return res.sendStatus(200);
-    }
-
-    /*
-    LESSON PLAN
-    */
-
-    if (
-      detectedIntent ===
-      INTENTS.LESSON_PLAN
-    ) {
-
-      const reply =
-        getLessonPlanReply(text);
 
       await sendMessage(
         from,
-        reply
+        aiReply
       );
 
       return res.sendStatus(200);
+
+    } catch (error) {
+
+      console.log(error);
+
+      return res.sendStatus(500);
     }
-
-    /*
-    AI
-    */
-
-    const aiReply =
-      await generateAiReply(
-        from,
-        text,
-        detectedIntent
-      );
-
-    console.log(
-      "AI:",
-      aiReply
-    );
-
-    rememberMessage(
-      from,
-      "assistant",
-      aiReply
-    );
-
-    await sendMessage(
-      from,
-      aiReply
-    );
-
-    console.log(
-      "Reply Sent ✅"
-    );
-
-    return res.sendStatus(200);
-
-  } catch (error) {
-
-    console.log(error);
-
-    return res.sendStatus(500);
   }
-});
+);
 
 /*
 ====================================
