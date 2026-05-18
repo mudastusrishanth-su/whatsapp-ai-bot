@@ -90,7 +90,14 @@ app.get("/webhook", (req, res) => {
 
   return res.sendStatus(403);
 });
+function resetUser(from) {
 
+  delete userStates[from];
+
+  delete escalationData[from];
+
+  delete sessions[from];
+}
 app.post("/webhook", async (req, res) => {
   try {
 
