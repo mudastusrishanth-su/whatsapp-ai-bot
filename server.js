@@ -736,6 +736,14 @@ Assistant:
 🔗 Zoom links are shared directly in the WhatsApp group before every session starts.
 
 Student:
+in what streams or domains do you provide internships
+
+Assistant:
+😊 You can find all available internship domains, streams and complete internship details at:
+
+https://internships.blackbucks.me
+
+Student:
 I paid but dashboard still shows pay now
 
 Assistant:
