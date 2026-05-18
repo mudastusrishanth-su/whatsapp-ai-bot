@@ -256,6 +256,39 @@ How can I help you today?`
 
         return res.sendStatus(200);
       }
+      /*
+      ====================================
+      OFFER LETTER FOLLOW-UP
+      ====================================
+      */
+
+      if (userSessions[from] === "waiting_offer_letter_confirmation") {
+        if (
+          text.includes("still not received") ||
+          text.includes("not received") ||
+          text.includes("didn't receive")
+        ) {
+          userSessions[from] = "collect_offer_letter_issue";
+
+          escalationData[from] = {
+            issue: "Offer Letter Not Received",
+          };
+
+          await sendMessage(
+            from,
+
+            `📋 Please share:
+
+1️⃣ Registered Email ID
+2️⃣ Payment Screenshot
+3️⃣ Payment Date & Time
+
+Our support team will verify and assist you 😊`
+          );
+
+          return res.sendStatus(200);
+        }
+      }
 
       /*
       ====================================
@@ -535,40 +568,7 @@ OR
         return res.sendStatus(200);
       }
 
-      /*
-      ====================================
-      OFFER LETTER FOLLOW-UP
-      ====================================
-      */
-
-      if (userSessions[from] === "waiting_offer_letter_confirmation") {
-        if (
-          text.includes("still not received") ||
-          text.includes("not received") ||
-          text.includes("didn't receive")
-        ) {
-          userSessions[from] = "collect_offer_letter_issue";
-
-          escalationData[from] = {
-            issue: "Offer Letter Not Received",
-          };
-
-          await sendMessage(
-            from,
-
-            `📋 Please share:
-
-1️⃣ Registered Email ID
-2️⃣ Payment Screenshot
-3️⃣ Payment Date & Time
-
-Our support team will verify and assist you 😊`
-          );
-
-          return res.sendStatus(200);
-        }
-      }
-
+      
       /*
       ====================================
       COLLECT LOGIN ISSUE DETAILS
