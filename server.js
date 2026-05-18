@@ -129,14 +129,16 @@ if (!message) {
 }
 
 const rawText = message?.text?.body;
+
 // Ignore non-text messages
-if (!text) {
+if (!rawText) {
   console.log("No text body found");
   return res.sendStatus(200);
 }
 
-console.log("Student:", text);
+const text = rawText.toLowerCase().trim();
 
+console.log("Student:", text);
     if (
       message &&
       (
