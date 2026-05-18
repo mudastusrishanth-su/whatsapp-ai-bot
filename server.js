@@ -79,1031 +79,385 @@ WEBHOOK VERIFY
 */
 
 app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
 
-  const VERIFY_TOKEN =
-    process.env.VERIFY_TOKEN;
-
-  const mode =
-    req.query["hub.mode"];
-
-  const token =
-    req.query["hub.verify_token"];
-
-  const challenge =
-    req.query["hub.challenge"];
-
-  if (
-    mode &&
-    token === VERIFY_TOKEN
-  ) {
-
+  if (mode && token === process.env.VERIFY_TOKEN) {
     console.log("Webhook Verified");
-
-    res.status(200).send(challenge);
-
-  } else {
-
-    res.sendStatus(403);
+    return res.status(200).send(challenge);
   }
+
+  return res.sendStatus(403);
 });
 
-/*
-====================================
-MAIN WEBHOOK
-====================================
-*/
-
 app.post("/webhook", async (req, res) => {
-
   try {
 
     const message =
       req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
+    if (!message || message.from_me) {
+      return res.sendStatus(200);
+    }
+
+    const from = message.from;
+
+    /*
+    ====================================
+    IMAGE HANDLING
+    ====================================
+    */
+
+    if (message.type === "image") {
+
+      if (userStates[from] === "waiting_for_screenshot") {
+
+        await handleScreenshotEscalation(
+          from,
+          message.image.id
+        );
+      }
+
+      return res.sendStatus(200);
+    }
+
+    /*
+    ====================================
+    ONLY TEXT
+    ====================================
+    */
+
+    if (message.type !== "text") {
+      return res.sendStatus(200);
+    }
+
+    const text =
+      message.text.body.toLowerCase().trim();
+
+    console.log("Student:", text);
+
+    /*
+    ====================================
+    RESET CHAT
+    ====================================
+    */
+
     if (
-      message &&
-      (
-        message.type === "text" ||
-        message.type === "image"
-      ) &&
-      !message.from_me
+      text === "reset" ||
+      text === "restart"
     ) {
 
-      const from = message.from;
+      resetUser(from);
 
-      /*
-      ====================================
-      HANDLE IMAGE ESCALATION
-      ====================================
-      */
-
-      if (
-        message.type === "image" &&
-        userSessions[from] ===
-          "waiting_for_screenshot"
-      ) {
-
-        const teamNumber =
-          process.env.TEAM_WHATSAPP_NUMBER;
-
-        const issueData =
-          escalationData[from];
-
-        const imageId =
-          message.image.id;
-
-        const escalationMessage =
-
-`🚨 STUDENT ISSUE ESCALATION
-
-👤 Student Details:
-
-${issueData.details}
-
-⚠️ Issue:
-${issueData.issue}
-
-📸 Screenshot proof attached below.
-
-Please check and assist the student.`;
-
-        /*
-        ====================================
-        SEND DETAILS TO TEAM
-        ====================================
-        */
-
-        await sendMessage(
-          teamNumber,
-          escalationMessage
-        );
-
-        /*
-        ====================================
-        SEND IMAGE TO TEAM
-        ====================================
-        */
-
-        await fetch(
-          `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type": "application/json",
-
-              Authorization:
-                `Bearer ${process.env.WHATSAPP_TOKEN}`,
-            },
-
-            body: JSON.stringify({
-              messaging_product: "whatsapp",
-
-              to: teamNumber,
-
-              type: "image",
-
-              image: {
-                id: imageId
-              }
-            }),
-          }
-        );
-
-        /*
-        ====================================
-        CONFIRM TO STUDENT
-        ====================================
-        */
-
-        await sendMessage(
-          from,
-
-`✅ Your issue has been escalated successfully along with screenshot proof.
-
-Our support team will contact you shortly 😊`
-        );
-
-        delete escalationData[from];
-
-        userSessions[from] = null;
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      HANDLE TEXT MESSAGE
-      ====================================
-      */
-
-      const text =
-        message.text.body.toLowerCase().trim();
-
-      console.log("Student:", text);
-
-      /*
-      ====================================
-      CREATE SESSION
-      ====================================
-      */
-
-      if (!sessions[from]) {
-        sessions[from] = [];
-      }
-
-      /*
-      ====================================
-      STORE USER MESSAGE
-      ====================================
-      */
-
-      sessions[from].push({
-        role: "user",
-        content: text
-      });
-
-      /*
-      ====================================
-      RESET CHAT
-      ====================================
-      */
-
-      if (
-        text === "reset" ||
-        text === "restart"
-      ) {
-
-        sessions[from] = [];
-        userSessions[from] = null;
-        delete escalationData[from];
-
-        await sendMessage(
-          from,
+      await sendMessage(
+        from,
 
 `✅ Your chat session has been reset.
 
-Send Hi to start again.`
-        );
+Send Hi to start again 😊`
+      );
 
-        return res.sendStatus(200);
-      }
+      return res.sendStatus(200);
+    }
 
-      /*
-      ====================================
-      SMART GREETING FLOW
-      ====================================
-      */
+    /*
+    ====================================
+    GREETING
+    ====================================
+    */
 
-      if (
-        text === "hi" ||
-        text === "hello" ||
-        text === "hey" ||
-        text === "hii" ||
-        text === "hi i have a question" ||
-        text === "i have a question"
-      ) {
+    if (isGreeting(text)) {
 
-        userSessions[from] =
-          "waiting_for_query";
+      userStates[from] =
+        "waiting_for_query";
 
-        await sendMessage(
-          from,
+      await sendMessage(
+        from,
 
-`👋 Hi, how are you? 😊
+`👋 Hi! I'm the Blackbucks AI Support Assistant 😊
 
-I'm the Blackbucks AI Support Assistant.
+Please tell me your issue or question and I’ll help you.`
+      );
 
-How can I help you today?`
-        );
+      return res.sendStatus(200);
+    }
 
-        return res.sendStatus(200);
-      }
+    /*
+    ====================================
+    CREATE SESSION
+    ====================================
+    */
 
-      /*
-====================================
-/*
-====================================
-AI INTENT DETECTION
-====================================
-*/
+    if (!sessions[from]) {
+      sessions[from] = [];
+    }
 
-const intentCheck =
-  await groq.chat.completions.create({
+    /*
+    ====================================
+    STORE USER MESSAGE
+    ====================================
+    */
 
-    messages: [
-
-      {
-        role: "system",
-
-        content: `
-You are an AI intent classifier.
-
-Understand the student's query intelligently.
-
-Reply ONLY with ONE keyword:
-
-LOGIN_ISSUE
-PAYMENT_ISSUE
-LIVE_CLASS
-DOMAIN_CHANGE
-EXAM_ISSUE
-LESSON_PLAN
-CERTIFICATE
-GENERAL_SUPPORT
-
-No explanation.
-`
-      },
-
-      {
-        role: "user",
-        content: text
-      }
-    ],
-
-    model: "llama-3.1-8b-instant",
-  });
-
-const detectedIntent =
-  intentCheck.choices[0]
-  .message.content
-  .trim();
-
-console.log(
-  "Detected Intent:",
-  detectedIntent
-);
-
-/*
-====================================
-SMART AI ISSUE FLOW
-====================================
-*/
-
-if (
-  userSessions[from] ===
-  "waiting_for_query"
-) {
-
-  /*
-  ====================================
-  LOGIN ISSUE
-  ====================================
-  */
-
-  if (
-    detectedIntent ===
-    "LOGIN_ISSUE"
-  ) {
-
-    userSessions[from] =
-      "collect_issue_details";
-
-    escalationData[from] = {
-      issue:
-        "TapTap LMS Login Issue"
-    };
-
-    await sendMessage(
+    rememberMessage(
       from,
-
-`📋 Please share the following details:
-
-1️⃣ Full Name
-2️⃣ College Name
-3️⃣ Registered Email ID
-4️⃣ Roll Number
-5️⃣ Registered Phone Number
-
-📸 After sharing details, please upload:
-• screenshot
-OR
-• screen recording of the issue 😊`
+      "user",
+      text
     );
 
-    return res.sendStatus(200);
-  }
+    /*
+    ====================================
+    CONTEXTUAL QUICK HANDLING
+    ====================================
+    */
 
-  /*
-  ====================================
-  PAYMENT ISSUE
-  ====================================
-  */
-
-  if (
-    detectedIntent ===
-    "PAYMENT_ISSUE"
-  ) {
-
-    await sendMessage(
-      from,
-
-`✅ Please don’t worry 😊
-
-The internship registration/payment website and TapTap LMS are different platforms.
-
-• Registration website → internship registration & payment
-• TapTap LMS → classes, lesson plans, assessments, assignments, activities
-
-Sometimes the dashboard may still show "Pay Now" even after successful payment. This is normal in many cases.
-
-📩 Offer letters are usually shared within 24-48 working hours after payment verification.
-
-📱 Official WhatsApp group links and internship instructions are shared through your offer letter email.
-
-🎥 Live classes are conducted through Zoom and schedules are shared weekly in the WhatsApp group.`
-    );
-
-    userSessions[from] = null;
-
-    return res.sendStatus(200);
-  }
-
-  /*
-  ====================================
-  DOMAIN CHANGE ISSUE
-  ====================================
-  */
-
-  if (
-    detectedIntent ===
-    "DOMAIN_CHANGE"
-  ) {
-
-    userSessions[from] =
-      "collect_domain_change_details";
-
-    escalationData[from] = {
-      issue:
-        "Domain Change Request"
-    };
-
-    await sendMessage(
-      from,
-
-`📋 Please share the following details for domain change request:
-
-1️⃣ Full Name
-2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
-4️⃣ Existing Domain
-5️⃣ New Domain Requested
-
-📸 After sharing details, please upload:
-• payment screenshot
-OR
-• offer letter screenshot 😊`
-    );
-
-    return res.sendStatus(200);
-  }
-
-  /*
-  ====================================
-  TEST / EXAM ISSUE
-  ====================================
-  */
-
-  if (
-    detectedIntent ===
-    "EXAM_ISSUE"
-  ) {
-
-    userSessions[from] =
-      "collect_exam_issue";
-
-    escalationData[from] = {
-      issue:
-        "Test / Hackathon / Exam Issue"
-    };
-
-    await sendMessage(
-      from,
-
-`📋 Please share the following details:
-
-1️⃣ Full Name
-2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
-4️⃣ Roll Number
-5️⃣ Test / Exam / Hackathon Link
-
-📸 Also upload:
-• screenshot
-OR
-• screen recording of the issue 😊`
-    );
-
-    return res.sendStatus(200);
-  }
-
-  /*
-  ====================================
-  LIVE CLASS QUESTIONS
-  ====================================
-  */
-
-  if (
-    detectedIntent ===
-    "LIVE_CLASS"
-  ) {
+    /*
+    RESOURCE / MATERIAL ISSUE
+    */
 
     if (
-      text.includes("missed") ||
+      text.includes("resource") ||
+      text.includes("materials") ||
+      text.includes("cannot find") ||
+      text.includes("can't find") ||
+      text.includes("no resources")
+    ) {
+
+      const reply =
+`📚 Please check your lesson plan inside TapTap LMS 😊
+
+All resources including:
+• recorded sessions
+• assignments
+• assessments
+• activities
+• study materials
+
+will be available there.
+
+If you still cannot access them, please share:
+• your domain
+• registered email ID
+• screenshot of the issue`;
+
+      rememberMessage(
+        from,
+        "assistant",
+        reply
+      );
+
+      await sendMessage(
+        from,
+        reply
+      );
+
+      return res.sendStatus(200);
+    }
+
+    /*
+    MISSED CLASS
+    */
+
+    if (
+      text.includes("missed class") ||
+      text.includes("missed session") ||
       text.includes("couldn't attend") ||
       text.includes("not attended")
     ) {
 
-      await sendMessage(
-        from,
+      const reply =
+`📚 No problem 😊
 
-`📚 The recorded session will be available in your lesson plan inside TapTap LMS 😊`
+The recorded class session will be available inside your lesson plan in TapTap LMS.`;
+
+      rememberMessage(
+        from,
+        "assistant",
+        reply
       );
 
-    } else {
-
       await sendMessage(
         from,
-
-`📅 The weekly class schedule is shared every Sunday in your official WhatsApp group 😊
-
-🎥 Live classes are conducted through Zoom.
-
-🔗 Zoom links are shared directly in the WhatsApp group before every class session starts.
-
-📚 Recorded sessions will later be available inside TapTap LMS lesson plans.`
+        reply
       );
+
+      return res.sendStatus(200);
     }
+
+    /*
+    LIVE CLASS QUERY
+    */
+
+    if (
+      text.includes("live class") ||
+      text.includes("zoom link") ||
+      text.includes("class link") ||
+      text.includes("where class")
+    ) {
+
+      const reply =
+`🎥 Live classes are conducted through Zoom.
+
+📅 Weekly schedules are shared every Sunday in your official WhatsApp group.
+
+🔗 Zoom links are shared directly in the WhatsApp group before every session starts.
+
+📚 Recorded sessions will later be available inside TapTap LMS lesson plans.`;
+
+      rememberMessage(
+        from,
+        "assistant",
+        reply
+      );
+
+      await sendMessage(
+        from,
+        reply
+      );
+
+      return res.sendStatus(200);
+    }
+
+    /*
+    ====================================
+    COLLECT ESCALATION DETAILS
+    ====================================
+    */
+
+    if (
+      [
+        "collect_login_details",
+        "collect_domain_change_details",
+        "collect_exam_issue",
+        "collect_payment_issue"
+      ].includes(userStates[from])
+    ) {
+
+      const reply =
+        collectEscalationDetails(
+          from,
+          userStates[from],
+          text
+        );
+
+      await sendMessage(
+        from,
+        reply
+      );
+
+      return res.sendStatus(200);
+    }
+
+    /*
+    ====================================
+    AI INTENT DETECTION
+    ====================================
+    */
+
+    const detectedIntent =
+      await detectIntent(text);
+
+    console.log(
+      "Detected Intent:",
+      detectedIntent
+    );
+
+    /*
+    ====================================
+    ESCALATION FLOWS
+    ====================================
+    */
+
+    if (
+      ESCALATION_FLOWS[
+        detectedIntent
+      ]
+    ) {
+
+      const reply =
+        startEscalation(
+          from,
+          detectedIntent
+        );
+
+      await sendMessage(
+        from,
+        reply
+      );
+
+      return res.sendStatus(200);
+    }
+
+    /*
+    ====================================
+    LESSON PLAN HANDLING
+    ====================================
+    */
+
+    if (
+      detectedIntent ===
+      INTENTS.LESSON_PLAN
+    ) {
+
+      const reply =
+        getLessonPlanReply(text);
+
+      rememberMessage(
+        from,
+        "assistant",
+        reply
+      );
+
+      await sendMessage(
+        from,
+        reply
+      );
+
+      return res.sendStatus(200);
+    }
+
+    /*
+    ====================================
+    AI REPLY
+    ====================================
+    */
+
+    const aiReply =
+      await generateAiReply(
+        from,
+        text,
+        detectedIntent
+      );
+
+    console.log(
+      "AI:",
+      aiReply
+    );
+
+    rememberMessage(
+      from,
+      "assistant",
+      aiReply
+    );
+
+    await sendMessage(
+      from,
+      aiReply
+    );
+
+    console.log(
+      "Reply Sent ✅"
+    );
 
     return res.sendStatus(200);
-  }
-
-  /*
-  ====================================
-  SHOW MENU ONLY IF UNCLEAR
-  ====================================
-  */
-
-  await sendMessage(
-    from,
-
-`📌 Please choose your issue category:
-
-1️⃣ Login Issues
-2️⃣ Payment Issues
-3️⃣ Offer Letter
-4️⃣ Live Classes
-5️⃣ Lesson Plans
-6️⃣ Certificates
-7️⃣ Domain Change
-8️⃣ Test / Exam / Hackathon Issues
-
-Or explain your issue in detail 😊`
-  );
-
-  userSessions[from] = null;
-
-  return res.sendStatus(200);
-}
-
-      /*
-      ====================================
-      COLLECT LOGIN ISSUE DETAILS
-      ====================================
-      */
-
-      if (
-        userSessions[from] ===
-        "collect_issue_details"
-      ) {
-
-        escalationData[from].details =
-          text;
-
-        userSessions[from] =
-          "waiting_for_screenshot";
-
-        await sendMessage(
-          from,
-
-`📸 Thank you for sharing your details.
-
-Now please upload:
-• screenshot
-OR
-• screen recording
-
-This helps our support team identify the exact issue faster 😊`
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      DOMAIN CHANGE FLOW
-      ====================================
-      */
-
-      if (
-        text.includes("domain change") ||
-        text.includes("change domain") ||
-        text.includes("change my domain") ||
-        text.includes("switch domain") ||
-        text.includes("change specialization") ||
-        text.includes("change course")
-      ) {
-
-        userSessions[from] =
-          "collect_domain_change_details";
-
-        escalationData[from] = {
-          issue:
-            "Domain Change Request"
-        };
-
-        await sendMessage(
-          from,
-
-`📋 Please share the following details for domain change request:
-
-1️⃣ Full Name
-2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
-4️⃣ Existing Domain
-5️⃣ New Domain Requested
-
-📸 After sharing details, please upload:
-• payment screenshot
-OR
-• offer letter screenshot 😊`
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      COLLECT DOMAIN CHANGE DETAILS
-      ====================================
-      */
-
-      if (
-        userSessions[from] ===
-        "collect_domain_change_details"
-      ) {
-
-        escalationData[from].details =
-          text;
-
-        userSessions[from] =
-          "waiting_for_screenshot";
-
-        await sendMessage(
-          from,
-
-`📸 Thank you for sharing your details.
-
-Now please upload:
-• payment screenshot
-OR
-• offer letter screenshot
-
-Your domain change request will be reviewed by the support team 😊`
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      TEST / HACKATHON / EXAM ISSUE FLOW
-      ====================================
-      */
-
-      if (
-        text.includes("test link") ||
-        text.includes("exam link") ||
-        text.includes("hackathon") ||
-        text.includes("assessment error") ||
-        text.includes("exam error") ||
-        text.includes("test error") ||
-        text.includes("unable to start test") ||
-        text.includes("unable to attend exam")
-      ) {
-
-        userSessions[from] =
-          "collect_exam_issue";
-
-        escalationData[from] = {
-          issue:
-            "Test / Hackathon / Exam Issue"
-        };
-
-        await sendMessage(
-          from,
-
-`📋 Please share the following details:
-
-1️⃣ Full Name
-2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
-4️⃣ Roll Number
-5️⃣ Test / Hackathon / Exam Link
-
-📸 Also upload:
-• screenshot
-OR
-• screen recording of the issue 😊`
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      COLLECT EXAM ISSUE DETAILS
-      ====================================
-      */
-
-      if (
-        userSessions[from] ===
-        "collect_exam_issue"
-      ) {
-
-        escalationData[from].details =
-          text;
-
-        userSessions[from] =
-          "waiting_for_screenshot";
-
-        await sendMessage(
-          from,
-
-`📸 Thank you for sharing your details.
-
-Now please upload:
-• screenshot
-OR
-• screen recording of the issue
-
-Your issue will be escalated to the support team immediately 😊`
-        );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      GROQ AI RESPONSE
-      ====================================
-      */
-
-      const completion =
-        await groq.chat.completions.create({
-
-          messages: [
-
-            {
-              role: "system",
-
-              content: `
-You are Blackbucks AI Internship Support Assistant.
-
-Your role is ONLY to help students regarding:
-- internships
-- TapTap LMS
-- classes
-- offer letters
-- assessments
-- certificates
-- internship support
-
-====================================
-IMPORTANT RULES
-====================================
-
-- Be professional and friendly
-- Keep replies short and WhatsApp-friendly
-- Use emojis naturally
-- Solve student queries clearly
-- Never give fake information
-
-====================================
-IMPORTANT INFORMATION
-====================================
-
-Internship Registration:
-https://internships.blackbucks.me
-
-TapTap LMS:
-https://taptap.blackbucks.me
-
-Offer letters:
-24-48 working hours after payment verification.
-
-====================================
-LIVE CLASSES INFORMATION
-====================================
-
-Live classes are conducted through Zoom.
-
-Weekly class schedules are shared every Sunday in the official WhatsApp group for the upcoming week.
-
-Live Zoom class links are shared directly in the official WhatsApp group before each session starts.
-
-Classes are conducted:
-- 2-3 times per week
-- Saturdays also
-
-No live classes on Sundays.
-
-Assignments, assessments, and activity links are shared in the WhatsApp groups.
-
-TapTap LMS does NOT host live classes.
-
-TapTap LMS is used for:
-- recorded class videos
-- lesson plans
-- assignments
-- assessments
-- activities
-
-If a student asks:
-- "Where will we get live classes?"
-- "Where is the class link?"
-- "How to attend classes?"
-- "Where do we get Zoom link?"
-
-Reply:
-"The weekly class schedule is shared every Sunday in your official WhatsApp group 😊
-
-The live Zoom class links are shared directly in the WhatsApp group before every class."
-
-If a student says:
-- "I missed the class"
-- "I couldn't attend the class"
-- "I missed live session"
-
-Reply:
-"The recorded session will be available in your lesson plan inside TapTap LMS 😊"
-
-====================================
-PAYMENT & DASHBOARD INFORMATION
-====================================
-
-The registration/payment website and TapTap LMS are different platforms.
-
-Registration website:
-used only for:
-- internship registration
-- payment
-
-TapTap LMS:
-used for:
-- classes
-- lesson plans
-- assignments
-- assessments
-- activities
-
-Sometimes the registration dashboard may still show "Pay Now" even after successful payment.
-
-This is normal in many cases.
-
-====================================
-TEST / HACKATHON / EXAM SUPPORT
-====================================
-
-If a student asks regarding:
-- test link issue
-- hackathon issue
-- exam issue
-- assessment issue
-- unable to start test
-- exam link not working
-
-Ask the student to share:
-
-1️⃣ Full Name
-2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
-4️⃣ Roll Number
-5️⃣ Test / Exam / Hackathon Link
-
-Then ask the student to upload:
-- screenshot
-OR
-- screen recording
-
-Then escalate the issue to the support team immediately.
-
-====================================
-LESSON PLAN LINKS
-====================================
-
-Quantum Systems Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80081&testType=collegeLessonPlan
-
-Data Platform Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80082&testType=collegeLessonPlan
-
-Generative AI Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80074&testType=collegeLessonPlan
-
-AI Machine Learning Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80073&testType=collegeLessonPlan
-
-Java Full Stack Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80086&testType=collegeLessonPlan
-
-MERN Stack Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80087&testType=collegeLessonPlan
-
-Cloud Infrastructure & DevOps Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80077&testType=collegeLessonPlan
-
-Cyber Defense & Security Analyst:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80075&testType=collegeLessonPlan
-
-Embedded & IoT Systems Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80078&testType=collegeLessonPlan
-
-Semiconductor Design Engineer (VLSI):
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80083&testType=collegeLessonPlan
-
-Python Automation Developer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80076&testType=collegeLessonPlan
-
-Mobile Software Engineer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80085&testType=collegeLessonPlan
-
-Product UI/UX Designer:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80080&testType=collegeLessonPlan
-
-Data & Business Intelligence Analyst:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80079&testType=collegeLessonPlan
-
-Associate Product Manager:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80084&testType=collegeLessonPlan
-
-Growth Marketing & CRM Specialist:
-https://taptap.blackbucks.me/lessonPlan/?lessonPlanId=80088&testType=collegeLessonPlan
-
-====================================
-IMPORTANT CONDITION
-====================================
-
-Only share lesson plan links if:
-- student completed payment
-AND
-- student received offer letter
-
-====================================
-DOMAIN CHANGE SUPPORT
-====================================
-
-If a student asks regarding:
-- domain change
-- changing internship domain
-- switching domain
-- changing course
-- changing specialization
-
-Then do NOT directly answer.
-
-Ask the student to share:
-
-1️⃣ Full Name
-2️⃣ Registered Email ID
-3️⃣ Registered Mobile Number
-4️⃣ Existing Domain
-5️⃣ New Domain Requested
-
-After collecting details, ask the student to upload:
-- payment screenshot
-OR
-- offer letter screenshot
-
-Then escalate the issue to the support team.
-
-Tell the student:
-
-"Your domain change request will be reviewed by the support team 😊"
-`
-            },
-
-            ...sessions[from]
-          ],
-
-          model: "llama-3.1-8b-instant",
-        });
-
-      /*
-      ====================================
-      AI REPLY
-      ====================================
-      */
-
-      const aiReply =
-        completion.choices[0]
-        .message.content;
-
-      console.log("AI:", aiReply);
-
-      /*
-      ====================================
-      STORE AI REPLY
-      ====================================
-      */
-
-      sessions[from].push({
-        role: "assistant",
-        content: aiReply
-      });
-
-      /*
-      ====================================
-      LIMIT MEMORY
-      ====================================
-      */
-
-      if (sessions[from].length > 10) {
-
-        sessions[from] =
-          sessions[from].slice(-10);
-      }
-
-      /*
-      ====================================
-      SEND AI REPLY
-      ====================================
-      */
-
-      await sendMessage(
-        from,
-        aiReply
-      );
-
-      console.log("Reply Sent ✅");
-    }
-
-    res.sendStatus(200);
 
   } catch (error) {
 
     console.log(error);
 
-    res.sendStatus(500);
+    return res.sendStatus(500);
   }
 });
-
-/*
-====================================
-START SERVER
-====================================
-*/
 
 app.listen(3000, () => {
 
