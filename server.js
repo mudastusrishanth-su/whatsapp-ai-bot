@@ -117,8 +117,26 @@ app.post("/webhook", async (req, res) => {
 
   try {
 
-    const message =
-      req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    const body = req.body;
+
+const message =
+  body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+
+// Ignore status updates
+if (!message) {
+  console.log("Ignoring non-message webhook event");
+  return res.sendStatus(200);
+}
+
+const text = message?.text?.body;
+
+// Ignore non-text messages
+if (!text) {
+  console.log("No text body found");
+  return res.sendStatus(200);
+}
+
+console.log("Student:", text);
 
     if (
       message &&
@@ -171,6 +189,7 @@ Please check and assist the student.`;
           teamNumber,
           escalationMessage
         );
+        return res.sendStatus(200);
 
         await fetch(
           `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
