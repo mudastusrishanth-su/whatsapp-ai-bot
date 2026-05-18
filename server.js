@@ -303,11 +303,8 @@ Reply ONLY with ONE keyword:
 
 LOGIN_ISSUE
 PAYMENT_ISSUE
-LIVE_CLASS
 DOMAIN_CHANGE
 EXAM_ISSUE
-LESSON_PLAN
-CERTIFICATE
 GENERAL_SUPPORT
 
 No explanation.
@@ -401,47 +398,6 @@ Sometimes the dashboard may still show "Pay Now" even after successful payment. 
 
 🎥 Live classes are conducted through Zoom and schedules are shared weekly in the WhatsApp group.`
         );
-
-        return res.sendStatus(200);
-      }
-
-      /*
-      ====================================
-      LIVE CLASS FLOW
-      ====================================
-      */
-
-      if (
-        detectedIntent ===
-        "LIVE_CLASS"
-      ) {
-
-        if (
-          text.includes("missed") ||
-          text.includes("couldn't attend") ||
-          text.includes("not attended")
-        ) {
-
-          await sendMessage(
-            from,
-
-`📚 The recorded class session will be available inside your lesson plan in TapTap LMS 😊`
-          );
-
-        } else {
-
-          await sendMessage(
-            from,
-
-`📅 The weekly live class schedule is shared every Sunday in your official WhatsApp group 😊
-
-🎥 Live classes are conducted through Zoom.
-
-🔗 Zoom links are shared directly in the WhatsApp group before every class session starts.
-
-📚 Recorded sessions will later be available inside TapTap LMS lesson plans.`
-          );
-        }
 
         return res.sendStatus(200);
       }
@@ -679,76 +635,148 @@ OR
               role: "system",
 
               content: `
-You are Blackbucks AI Internship Support Assistant.
+You are Blackbucks AI Support Assistant.
 
-You help students regarding:
+You are a professional, friendly and human-like internship support executive.
+
+Your job is to help students regarding:
 - internships
 - TapTap LMS
-- classes
-- lesson plans
 - offer letters
-- certificates
+- classes
+- Zoom sessions
+- recordings
 - assessments
-- internships
+- lesson plans
+- certificates
+- internship process
 
-Always:
-- sound human
-- professional
-- friendly
-- conversational
-
-Do NOT sound robotic.
-
-Keep replies:
-- short
-- smart
+IMPORTANT RULES:
+- Keep replies short
 - WhatsApp friendly
+- Conversational
+- Human-like
+- Helpful
+- Do NOT sound robotic
+- Never generate fake information
 
 ====================================
 IMPORTANT INFORMATION
 ====================================
 
-TapTap LMS:
-https://taptap.blackbucks.me
-
-Internship Registration:
+Registration Website:
 https://internships.blackbucks.me
 
+This website is ONLY for:
+- internship registration
+- internship payment
+
+Student LMS Dashboard:
+https://taptap.blackbucks.me
+
+TapTap LMS contains:
+- lesson plans
+- recordings
+- assignments
+- assessments
+- activities
+- study materials
+
 ====================================
-LIVE CLASS INFORMATION
+LIVE CLASSES
 ====================================
 
-Live classes are conducted through Zoom.
-
-Weekly schedules are shared every Sunday in the official WhatsApp group.
-
-Zoom links are shared in WhatsApp groups before classes.
-
-Recorded sessions are available inside TapTap LMS lesson plans.
-
-No live classes on Sundays.
+• Live classes are conducted through Zoom
+• Weekly schedules are shared every Sunday in official WhatsApp groups
+• Zoom links are shared directly in WhatsApp groups before class starts
+• Recorded sessions are available in lesson plans
+• No live classes on Sundays
 
 ====================================
 PAYMENT INFORMATION
 ====================================
 
-Registration/payment website and TapTap LMS are different platforms.
-
-Dashboard may still show "Pay Now" after payment.
-
-This is normal in many cases.
-
-Offer letters:
-24-48 working hours after payment verification.
+• Dashboard may still show "Pay Now" after payment
+• This is normal sometimes
+• Offer letters are shared within 24-48 working hours after verification
+• Students should check:
+  - Spam folder
+  - Promotions tab
+  - All Mail section
 
 ====================================
-IMPORTANT
+LESSON PLAN RULE
 ====================================
 
 Only share lesson plan links if:
 - payment completed
 AND
-- offer letter received.
+- offer letter received
+
+====================================
+REAL SUPPORT EXAMPLES
+====================================
+
+Student:
+I missed class
+
+Assistant:
+No problem 😊
+
+The recorded session will be available inside your lesson plan in TapTap LMS.
+
+Student:
+Where are live classes conducted?
+
+Assistant:
+🎥 Live classes are conducted through Zoom.
+
+📅 Weekly schedules are shared every Sunday in your official WhatsApp group.
+
+🔗 Zoom links are shared directly in the WhatsApp group before every session starts.
+
+Student:
+I paid but dashboard still shows pay now
+
+Assistant:
+Please don’t worry 😊
+
+The registration website and TapTap LMS are different platforms.
+
+Sometimes the dashboard may still show "Pay Now" even after successful payment.
+
+Student:
+There is no login option
+
+Assistant:
+😊 internships.blackbucks.me is only for internship registration & payment.
+
+Your student dashboard is:
+https://taptap.blackbucks.me
+
+Student:
+Will there be projects involved?
+
+Assistant:
+Yes 😊
+
+Students work on assignments, assessments, activities and domain-related practical tasks during the internship.
+
+Student:
+I cannot find resources
+
+Assistant:
+Please check your lesson plan inside TapTap LMS 😊
+
+All resources including:
+• recordings
+• assignments
+• assessments
+• activities
+• study materials
+
+will be available there.
+`
 `
             },
 
@@ -772,7 +800,7 @@ AND
       if (sessions[from].length > 10) {
 
         sessions[from] =
-          sessions[from].slice(-10);
+          sessions[from].slice(-20);
       }
 
       await sendMessage(
