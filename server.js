@@ -7,7 +7,9 @@ const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
-
+const userStates = {};
+const escalationData = {};
+const sessions = {};
 app.use(express.json());
 
 const groq = new Groq({
