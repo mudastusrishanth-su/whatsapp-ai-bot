@@ -140,7 +140,7 @@ app.post("/webhook", async (req, res) => {
       if (
         message.type === "image" &&
         userSessions[from] ===
-          "waiting_for_screenshot"
+        "waiting_for_screenshot"
       ) {
 
         const teamNumber =
@@ -154,7 +154,7 @@ app.post("/webhook", async (req, res) => {
 
         const escalationMessage =
 
-`🚨 STUDENT ISSUE ESCALATION
+          `🚨 STUDENT ISSUE ESCALATION
 
 👤 Student Details:
 
@@ -201,7 +201,7 @@ Please check and assist the student.`;
         await sendMessage(
           from,
 
-`✅ Your issue has been escalated successfully along with screenshot proof.
+          `✅ Your issue has been escalated successfully along with screenshot proof.
 
 Our support team will contact you shortly 😊`
         );
@@ -242,7 +242,7 @@ Our support team will contact you shortly 😊`
         await sendMessage(
           from,
 
-`✅ Chat reset successful.
+          `✅ Chat reset successful.
 
 Send Hi to start again 😊`
         );
@@ -270,7 +270,7 @@ Send Hi to start again 😊`
         await sendMessage(
           from,
 
-`👋 Hi, how are you? 😊
+          `👋 Hi, how are you? 😊
 
 I'm the Blackbucks AI Support Assistant.
 
@@ -322,8 +322,8 @@ No explanation.
 
       const detectedIntent =
         intentCheck.choices[0]
-        .message.content
-        .trim();
+          .message.content
+          .trim();
 
       console.log(
         "Detected Intent:",
@@ -352,7 +352,7 @@ No explanation.
         await sendMessage(
           from,
 
-`📋 Please share the following details:
+          `📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ College Name
@@ -383,7 +383,7 @@ OR
         await sendMessage(
           from,
 
-`✅ Please don’t worry 😊
+          `✅ Please don’t worry 😊
 
 The internship registration/payment website and TapTap LMS are different platforms.
 
@@ -424,7 +424,7 @@ Sometimes the dashboard may still show "Pay Now" even after successful payment. 
         await sendMessage(
           from,
 
-`📋 Please share the following details for domain change request:
+          `📋 Please share the following details for domain change request:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -463,7 +463,7 @@ OR
         await sendMessage(
           from,
 
-`📋 Please share the following details:
+          `📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -494,7 +494,7 @@ OR
         await sendMessage(
           from,
 
-`📚 Please share your internship domain name.
+          `📚 Please share your internship domain name.
 
 Example:
 • AIML
@@ -530,7 +530,7 @@ I'll share the lesson plan accordingly 😊`
         await sendMessage(
           from,
 
-`📸 Thank you for sharing your details.
+          `📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
@@ -563,7 +563,7 @@ This helps our support team identify the issue faster 😊`
         await sendMessage(
           from,
 
-`📸 Thank you for sharing your details.
+          `📸 Thank you for sharing your details.
 
 Now please upload:
 • payment screenshot
@@ -594,7 +594,7 @@ OR
         await sendMessage(
           from,
 
-`📸 Thank you for sharing your details.
+          `📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
@@ -777,7 +777,7 @@ All resources including:
 
 will be available there.
 `
-`
+                
             },
 
             ...sessions[from]
