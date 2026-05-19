@@ -132,22 +132,29 @@ app.post("/webhook", async (req, res) => {
       const from = message.from;
 
       /*
-      ====================================
-      HANDLE IMAGE ESCALATION
-      ====================================
-      */
+====================================
+HANDLE IMAGE ESCALATION
+====================================
+*/
 
-      if (
-        message.type === "image" &&
-        userSessions[from] === "waiting_for_screenshot"
-      ) {
-        const teamNumber = process.env.TEAM_WHATSAPP_NUMBER;
+if (
+  (message.type === "image" ||
+    message.type === "document") &&
+  userSessions[from] === "waiting_for_screenshot"
+) {
+  const teamNumber = process.env.TEAM_WHATSAPP_NUMBER;
 
-        const issueData = escalationData[from];
+  console.log("TEAM NUMBER:", teamNumber);
+  console.log("Sending escalation...");
 
-        const imageId = message.image.id;
+  const issueData = escalationData[from];
 
-        const escalationMessage = `🚨 STUDENT ISSUE ESCALATION
+  const mediaId =
+    message.type === "image"
+      ? message.image.id
+      : message.document.id;
+
+  const escalationMessage = `🚨 STUDENT ISSUE ESCALATION
 
 👤 Student Details:
 
@@ -160,148 +167,147 @@ ${issueData.issue}
 
 Please check and assist the student.`;
 
-        await sendMessage(teamNumber, escalationMessage);
+  await sendMessage(teamNumber, escalationMessage);
 
-        await fetch(
-          `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
-          {
-            method: "POST",
+  await fetch(
+    `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
 
-            headers: {
-              "Content-Type": "application/json",
+      headers: {
+        "Content-Type": "application/json",
 
-              Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-            },
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+      },
 
-            body: JSON.stringify({
-              messaging_product: "whatsapp",
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
 
-              to: teamNumber,
+        to: teamNumber,
 
-              type: "image",
+        type: "image",
 
-              image: {
-                id: imageId,
-              },
-            }),
-          }
-        );
+        image: {
+          id: mediaId,
+        },
+      }),
+    }
+  );
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `✅ Your issue has been escalated successfully along with screenshot proof.
+    `✅ Your issue has been escalated successfully along with screenshot proof.
 
 Our support team will contact you shortly 😊`
-        );
+  );
 
-        delete escalationData[from];
+  delete escalationData[from];
 
-        userSessions[from] = null;
+  userSessions[from] = null;
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
+/*
+====================================
+HANDLE TEXT MESSAGE
+====================================
+*/
 
-      /*
-      ====================================
-      HANDLE TEXT MESSAGE
-      ====================================
-      */
+/*
+====================================
+RESET CHAT
+====================================
+*/
 
-      /*
-      ====================================
-      RESET CHAT
-      ====================================
-      */
+if (text === "reset" || text === "restart") {
+  sessions[from] = [];
+  userSessions[from] = null;
+  delete escalationData[from];
 
-      if (text === "reset" || text === "restart") {
-        sessions[from] = [];
-        userSessions[from] = null;
-        delete escalationData[from];
+  await sendMessage(
+    from,
 
-        await sendMessage(
-          from,
-
-          `✅ Chat reset successful.
+    `✅ Chat reset successful.
 
 Send Hi to start again 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      GREETING FLOW
-      ====================================
-      */
+/*
+====================================
+GREETING FLOW
+====================================
+*/
 
-      if (
-        text === "hi" ||
-        text === "hello" ||
-        text === "hey" ||
-        text === "hii"
-      ) {
-        userSessions[from] = "waiting_for_query";
+if (
+  text === "hi" ||
+  text === "hello" ||
+  text === "hey" ||
+  text === "hii"
+) {
+  userSessions[from] = "waiting_for_query";
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `👋 Hi, how are you? 😊
+    `👋 Hi, how are you? 😊
 
 I'm the Blackbucks AI Support Assistant.
 
 How can I help you today?`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
-      /*
-      ====================================
-      OFFER LETTER FOLLOW-UP
-      ====================================
-      */
+  return res.sendStatus(200);
+}
+/*
+====================================
+OFFER LETTER FOLLOW-UP
+====================================
+*/
 
-      if (userSessions[from] === "waiting_offer_letter_confirmation") {
-        if (
-          text.includes("still not received") ||
-          text.includes("not received") ||
-          text.includes("didn't receive")
-        ) {
-          userSessions[from] = "collect_offer_letter_issue";
+if (userSessions[from] === "waiting_offer_letter_confirmation") {
+  if (
+    text.includes("still not received") ||
+    text.includes("not received") ||
+    text.includes("didn't receive")
+  ) {
+    userSessions[from] = "collect_offer_letter_issue";
 
-          escalationData[from] = {
-            issue: "Offer Letter Not Received",
-          };
+    escalationData[from] = {
+      issue: "Offer Letter Not Received",
+    };
 
-          await sendMessage(
-            from,
+    await sendMessage(
+      from,
 
-            `📋 Please share:
+      `📋 Please share:
 
 1️⃣ Registered Email ID
 2️⃣ Payment Screenshot
 3️⃣ Payment Date & Time
 
 Our support team will verify and assist you 😊`
-          );
+    );
 
-          return res.sendStatus(200);
-        }
-      }
+    return res.sendStatus(200);
+  }
+}
 
-      /*
-      ====================================
-      AI INTENT DETECTION
-      ====================================
-      */
-      const currentDateTime = new Date().toString();
-      const intentCheck = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
+/*
+====================================
+AI INTENT DETECTION
+====================================
+*/
+const currentDateTime = new Date().toString();
+const intentCheck = await groq.chat.completions.create({
+  messages: [
+    {
+      role: "system",
 
-            content: `
+      content: `
 Current Date & Time:
 ${currentDateTime}
 
@@ -406,38 +412,38 @@ GENERAL_SUPPORT
 Reply ONLY with the keyword.
 No explanation.
 `,
-          },
+    },
 
-          {
-            role: "user",
-            content: text,
-          },
-        ],
+    {
+      role: "user",
+      content: text,
+    },
+  ],
 
-        model: "llama-3.3-70b-versatile",
-      });
+  model: "llama-3.3-70b-versatile",
+});
 
-      const detectedIntent = intentCheck.choices[0].message.content.trim();
+const detectedIntent = intentCheck.choices[0].message.content.trim();
 
-      console.log("Detected Intent:", detectedIntent);
+console.log("Detected Intent:", detectedIntent);
 
-      /*
-      ====================================
-      LOGIN ISSUE FLOW
-      ====================================
-      */
+/*
+====================================
+LOGIN ISSUE FLOW
+====================================
+*/
 
-      if (detectedIntent === "LOGIN_ISSUE") {
-        userSessions[from] = "collect_issue_details";
+if (detectedIntent === "LOGIN_ISSUE") {
+  userSessions[from] = "collect_issue_details";
 
-        escalationData[from] = {
-          issue: "TapTap LMS Login Issue",
-        };
+  escalationData[from] = {
+    issue: "TapTap LMS Login Issue",
+  };
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `📋 Please share the following details:
+    `📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ College Name
@@ -449,44 +455,44 @@ No explanation.
 • screenshot
 OR
 • screen recording of the issue 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      PAYMENT ISSUE FLOW
-      ====================================
-      */
+/*
+====================================
+PAYMENT ISSUE FLOW
+====================================
+*/
 
-      if (detectedIntent === "PAYMENT_ISSUE") {
-        await sendMessage(
-          from,
+if (detectedIntent === "PAYMENT_ISSUE") {
+  await sendMessage(
+    from,
 
-          `Please don’t worry 😊
+    `Please don’t worry 😊
 
 Sometimes the dashboard may still show "Pay Now" even after successful payment.
 
 Offer letters are usually shared within 24–48 working hours after verification.`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      OFFER LETTER ISSUE FLOW
-      ====================================
-      */
+/*
+====================================
+OFFER LETTER ISSUE FLOW
+====================================
+*/
 
-      if (detectedIntent === "OFFER_LETTER_ISSUE") {
-        userSessions[from] = "waiting_offer_letter_confirmation";
+if (detectedIntent === "OFFER_LETTER_ISSUE") {
+  userSessions[from] = "waiting_offer_letter_confirmation";
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `Please don’t worry 😊
+    `Please don’t worry 😊
 
 Offer letters and onboarding emails are usually shared within 24–48 working hours after payment verification.
 
@@ -497,28 +503,28 @@ Please check:
 
 If you still haven’t received any email after 48 working hours, please reply:
 still not received`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      DOMAIN CHANGE FLOW
-      ====================================
-      */
+/*
+====================================
+DOMAIN CHANGE FLOW
+====================================
+*/
 
-      if (detectedIntent === "DOMAIN_CHANGE") {
-        userSessions[from] = "collect_domain_change_details";
+if (detectedIntent === "DOMAIN_CHANGE") {
+  userSessions[from] = "collect_domain_change_details";
 
-        escalationData[from] = {
-          issue: "Domain Change Request",
-        };
+  escalationData[from] = {
+    issue: "Domain Change Request",
+  };
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `📋 Please share the following details for domain change request:
+    `📋 Please share the following details for domain change request:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -530,28 +536,28 @@ still not received`
 • payment screenshot
 OR
 • offer letter screenshot 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      EXAM ISSUE FLOW
-      ====================================
-      */
+/*
+====================================
+EXAM ISSUE FLOW
+====================================
+*/
 
-      if (detectedIntent === "EXAM_ISSUE") {
-        userSessions[from] = "collect_exam_issue";
+if (detectedIntent === "EXAM_ISSUE") {
+  userSessions[from] = "collect_exam_issue";
 
-        escalationData[from] = {
-          issue: "Test / Hackathon / Exam Issue",
-        };
+  escalationData[from] = {
+    issue: "Test / Hackathon / Exam Issue",
+  };
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `📋 Please share the following details:
+    `📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -563,27 +569,27 @@ OR
 • screenshot
 OR
 • screen recording of the issue 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      
-      /*
-      ====================================
-      COLLECT LOGIN ISSUE DETAILS
-      ====================================
-      */
 
-      if (userSessions[from] === "collect_issue_details") {
-        escalationData[from].details = text;
+/*
+====================================
+COLLECT LOGIN ISSUE DETAILS
+====================================
+*/
 
-        userSessions[from] = "waiting_for_screenshot";
+if (userSessions[from] === "collect_issue_details") {
+  escalationData[from].details = text;
 
-        await sendMessage(
-          from,
+  userSessions[from] = "waiting_for_screenshot";
 
-          `📸 Thank you for sharing your details.
+  await sendMessage(
+    from,
+
+    `📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
@@ -591,113 +597,132 @@ OR
 • screen recording
 
 This helps our support team identify the issue faster 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      COLLECT DOMAIN CHANGE DETAILS
-      ====================================
-      */
+/*
+====================================
+COLLECT DOMAIN CHANGE DETAILS
+====================================
+*/
 
-      if (userSessions[from] === "collect_domain_change_details") {
-        escalationData[from].details = text;
+if (userSessions[from] === "collect_domain_change_details") {
+  escalationData[from].details = text;
 
-        userSessions[from] = "waiting_for_screenshot";
+  userSessions[from] = "waiting_for_screenshot";
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `📸 Thank you for sharing your details.
+    `📸 Thank you for sharing your details.
 
 Now please upload:
 • payment screenshot
 OR
 • offer letter screenshot 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      COLLECT EXAM ISSUE DETAILS
-      ====================================
-      */
+/*
+====================================
+COLLECT EXAM ISSUE DETAILS
+====================================
+*/
 
-      if (userSessions[from] === "collect_exam_issue") {
-        escalationData[from].details = text;
+if (userSessions[from] === "collect_exam_issue") {
+  escalationData[from].details = text;
 
-        userSessions[from] = "waiting_for_screenshot";
+  userSessions[from] = "waiting_for_screenshot";
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `📸 Thank you for sharing your details.
+    `📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
 OR
 • screen recording of the issue 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
 
-      /*
-      ====================================
-      COLLECT OFFER LETTER DETAILS
-      ====================================
-      */
+/*
+====================================
+COLLECT OFFER LETTER DETAILS
+====================================
+*/
 
-      if (userSessions[from] === "collect_offer_letter_issue") {
-        escalationData[from].details = text;
+if (userSessions[from] === "collect_offer_letter_issue") {
+  escalationData[from].details = text;
 
-        userSessions[from] = "waiting_for_screenshot";
+  userSessions[from] = "waiting_for_screenshot";
 
-        await sendMessage(
-          from,
+  await sendMessage(
+    from,
 
-          `📸 Thank you for sharing the details.
+    `📸 Thank you for sharing the details.
 
 Now please upload:
 • payment screenshot
 OR
 • payment proof 😊`
-        );
+  );
 
-        return res.sendStatus(200);
-      }
+  return res.sendStatus(200);
+}
+if (
+  text.includes("still showing pay now") ||
+  text.includes("pay now option still showing") ||
+  text.includes("still shows pay now")
+) {
+  await sendMessage(
+    from,
 
-      /*
-      ====================================
-      CREATE MEMORY
-      ====================================
-      */
+    `Please don’t worry 😊
 
-      if (!sessions[from]) {
-        sessions[from] = [];
-      }
+The registration website and the TapTap student dashboard are different platforms.
 
-      sessions[from].push({
-        role: "user",
-        content: text,
-      });
+Your payment has already been updated successfully in the TapTap dashboard, which is why the “Pay Now” option is not visible there. Sometimes, the registration link may still continue showing the “Pay Now” option temporarily due to a sync delay.
 
-      /*
-      ====================================
-      MAIN AI RESPONSE
-      ====================================
-      */
+Offer letters are usually shared within 24–48 working hours after verification.`
+  );
 
-      const completion = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "system",
+  return res.sendStatus(200);
+}
 
-            content: `
+/*
+====================================
+CREATE MEMORY
+====================================
+*/
+
+if (!sessions[from]) {
+  sessions[from] = [];
+}
+
+sessions[from].push({
+  role: "user",
+  content: text,
+});
+
+/*
+====================================
+MAIN AI RESPONSE
+====================================
+*/
+
+const completion = await groq.chat.completions.create({
+  messages: [
+    {
+      role: "system",
+
+      content: `
             Current Date & Time:
 ${currentDateTime}
 
@@ -1126,40 +1151,40 @@ All resources including:
 
 will be available there.
 `,
-          },
+    },
 
-          ...sessions[from],
-        ],
+    ...sessions[from],
+  ],
 
-        model: "llama-3.1-8b-instant",
-      });
+  model: "llama-3.1-8b-instant",
+});
 
-      const aiReply = completion.choices[0].message.content;
+const aiReply = completion.choices[0].message.content;
 
-      console.log("AI:", aiReply);
+console.log("AI:", aiReply);
 
-      sessions[from].push({
-        role: "assistant",
-        content: aiReply,
-      });
+sessions[from].push({
+  role: "assistant",
+  content: aiReply,
+});
 
-      if (sessions[from].length > 20) {
-        sessions[from] = sessions[from].slice(-20);
-      }
+if (sessions[from].length > 20) {
+  sessions[from] = sessions[from].slice(-20);
+}
 
-      await sendMessage(from, aiReply);
+await sendMessage(from, aiReply);
 
-      console.log("Reply Sent ✅");
+console.log("Reply Sent ✅");
 
-      return res.sendStatus(200);
+return res.sendStatus(200);
     }
 
-    res.sendStatus(200);
+res.sendStatus(200);
   } catch (error) {
-    console.log(error);
+  console.log(error);
 
-    res.sendStatus(500);
-  }
+  res.sendStatus(500);
+}
 });
 
 /*
