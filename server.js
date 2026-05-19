@@ -132,6 +132,8 @@ async function sendMessage(to, message) {
   */
   const currentDateTime = new Date().toLocaleString("en-IN", {
   timeZone: "Asia/Kolkata",
+  dateStyle: "full",
+  timeStyle: "short",
 });
   app.post("/webhook", async (req, res) => {
     try {
@@ -1097,6 +1099,11 @@ Your job is to help students regarding:
 - lesson plans
 - certificates
 - internship process
+
+If students ask current time or today's date:
+- answer in Indian Standard Time (IST)
+- answer naturally
+- do not mention GMT or UTC
 
 IMPORTANT RULES:
 - Always use proper grammar and spelling
