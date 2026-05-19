@@ -35,7 +35,17 @@ const analytics = {
   domainChanges: 0,
   faqReplies: 0,
   spamWarnings: 0,
+
+   resolvedIssues: 0,
+  unresolvedIssues: 0,
+
+  ratings: {
+    excellent: 0,
+    good: 0,
+    bad: 0,
+  },
 };
+
 /*
 ====================================
 CENTRALIZED LINKS
@@ -271,15 +281,36 @@ ${new Date().toLocaleString()}
               }),
             }
           );
+        
           await sendMessage(
-            from,
+  from,
 
-            `✅ Your issue has been escalated successfully along with screenshot proof.
+  `✅ Your issue has been escalated successfully along with screenshot proof.
 
 Our support team will contact you shortly 😊`
-          );
+);
+
+await delay(2000);
+
+await sendMessage(
+  from,
+
+  `⭐ Was the support process helpful so far?
+
+Reply with:
+1️⃣ Excellent
+2️⃣ Good
+3️⃣ Needs Improvement`
+);
+
+delete escalationData[from];
+
+userSessions[from] = null;
+
+return res.sendStatus(200);
 
           delete escalationData[from];
+
 
           userSessions[from] = null;
 
@@ -783,6 +814,67 @@ if (
     from,
 
     `📢 Official WhatsApp group invitation links are shared through onboarding emails/offer letters 😊`
+  );
+
+  return res.sendStatus(200);
+}
+/*
+====================================
+FEEDBACK HANDLER
+====================================
+*/
+
+if (
+  text === "1" ||
+  text.includes("excellent")
+) {
+
+  analytics.ratings.excellent++;
+
+  analytics.resolvedIssues++;
+
+  await sendMessage(
+    from,
+
+    `Thank you so much for your feedback 😊`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text === "2" ||
+  text.includes("good")
+) {
+
+  analytics.ratings.good++;
+
+  analytics.resolvedIssues++;
+
+  await sendMessage(
+    from,
+
+    `Thank you 😊 We're happy to help.`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text === "3" ||
+  text.includes("needs improvement")
+) {
+
+  analytics.ratings.bad++;
+
+  analytics.unresolvedIssues++;
+
+  await sendMessage(
+    from,
+
+    `Thank you for the feedback 😊
+
+Our support team will continue improving the experience.`
   );
 
   return res.sendStatus(200);
