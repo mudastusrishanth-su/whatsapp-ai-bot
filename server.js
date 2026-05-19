@@ -36,8 +36,34 @@ const analytics = {
   faqReplies: 0,
   spamWarnings: 0,
 };
+/*
+====================================
+CENTRALIZED LINKS
+====================================
+*/
 
+const LINKS = {
+  registration: "https://internships.blackbucks.me",
+  taptap: "https://taptap.blackbucks.me",
+};
 function humanReply(message) {
+  /*
+AUTO ADD TAPTAP LINK
+*/
+
+if (
+  message.toLowerCase().includes("taptap") ||
+  message.toLowerCase().includes("lms") ||
+  message.toLowerCase().includes("lesson plan") ||
+  message.toLowerCase().includes("recordings") ||
+  message.toLowerCase().includes("dashboard")
+) {
+
+  if (!message.includes(LINKS.taptap)) {
+
+    message += `\n\n🔗 TapTap LMS:\n${LINKS.taptap}`;
+  }
+}
   return message
     .replace("Please share", "Sure 😊 Please share")
     .replace("Please check", "Kindly check")
@@ -766,7 +792,11 @@ if (
         AI INTENT DETECTION
         ====================================
         */
-        const currentDateTime = new Date().toString();
+        const currentDateTime = new Date().toLocaleString("en-IN", {
+  timeZone: "Asia/Kolkata",
+  dateStyle: "full",
+  timeStyle: "short",
+});
         const intentCheck = await groq.chat.completions.create({
           messages: [
             {
