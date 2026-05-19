@@ -23,6 +23,35 @@ MEMORY STORAGE
 const sessions = {};
 const userSessions = {};
 const escalationData = {};
+const lastIntent = {};
+const spamTracker = {};
+
+const analytics = {
+  totalMessages: 0,
+  totalEscalations: 0,
+  loginIssues: 0,
+  offerLetterIssues: 0,
+  examIssues: 0,
+  domainChanges: 0,
+  faqReplies: 0,
+  spamWarnings: 0,
+};
+
+function humanReply(message) {
+  return message
+    .replace("Please share", "Sure 😊 Please share")
+    .replace("Please check", "Kindly check")
+    .replace("Please don’t worry", "No worries 😊")
+    .replace("Please reply", "Just reply")
+    .replace(
+      "Our support team will verify and assist you",
+      "Our support team will help you shortly 😊"
+    );
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /*
 ====================================
@@ -31,6 +60,9 @@ SEND WHATSAPP MESSAGE
 */
 
 async function sendMessage(to, message) {
+    await delay(1200);
+
+  message = humanReply(message);
   const response = await fetch(
     `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
     {
@@ -123,6 +155,7 @@ async function sendMessage(to, message) {
       const text = rawText ? rawText.toLowerCase().trim() : "";
 
       console.log("Student:", text);
+      analytics.totalMessages++;
 
       if (
   message &&
@@ -158,20 +191,31 @@ async function sendMessage(to, message) {
               ? message.image.id
               : message.document.id;
 
-          const escalationMessage = `🚨 STUDENT ISSUE ESCALATION
+          const escalationMessage = `🚨 ${issueData.issue.toUpperCase()} ESCALATION
 
-👤 Student Details:
+👤 STUDENT DETAILS
+━━━━━━━━━━━━━━━
 
 ${issueData.details}
 
-⚠️ Issue:
+⚠️ ISSUE TYPE
+━━━━━━━━━━━━━━━
+
 ${issueData.issue}
 
-📸 Screenshot proof attached below.
+📸 SCREENSHOT / PROOF
+━━━━━━━━━━━━━━━
 
-Please check and assist the student.`;
+Attached below.
 
+🕒 Escalated At:
+${new Date().toLocaleString()}
+
+🤖 Blackbucks AI Support`;
+          
+          analytics.totalEscalations++;
           await sendMessage(teamNumber, escalationMessage);
+          
 
           await fetch(
             `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -286,7 +330,7 @@ How can I help you today?`
             await sendMessage(
               from,
 
-              `📋 Please share:
+              `Sure 😊 Please share the below details so our support team can verify your payment and assist you faster:
 
  *Registered Email ID
  *Phone Number 
@@ -424,8 +468,295 @@ OR
 
           return res.sendStatus(200);
         }
+        /*
+====================================
+SMART INTENT CONTINUATION
+====================================
+*/
 
-        
+if (
+  text.includes("same issue") ||
+  text.includes("same problem") ||
+  text.includes("still pending") ||
+  text.includes("still not working") ||
+  text.includes("again") ||
+  text.includes("not solved")
+) {
+
+  /*
+  LOGIN ISSUE CONTINUATION
+  */
+
+  if (lastIntent[from] === "LOGIN_ISSUE") {
+
+    userSessions[from] = "collect_issue_details";
+
+    escalationData[from] = {
+      issue: "TapTap LMS Login Issue"
+    };
+
+    await sendMessage(
+      from,
+
+      `I understand 😊 It seems the login issue is still continuing.
+
+Sure 😊 Please share the below details so our support team can help you faster:
+
+1️⃣ Full Name
+2️⃣ College Name
+3️⃣ Registered Email ID
+4️⃣ Roll Number
+5️⃣ Registered Phone Number`
+    );
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  OFFER LETTER CONTINUATION
+  */
+
+  if (lastIntent[from] === "OFFER_LETTER_ISSUE") {
+
+    userSessions[from] = "collect_offer_letter_issue";
+
+    escalationData[from] = {
+      issue: "Offer Letter Not Received"
+    };
+
+    await sendMessage(
+      from,
+
+      `I understand 😊 It seems you still haven't received the onboarding details.
+
+Sure 😊 Please share the below details so our support team can verify and assist you faster:
+
+1️⃣ Registered Email ID
+2️⃣ Payment Date
+3️⃣ Payment Screenshot`
+    );
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  DOMAIN CHANGE CONTINUATION
+  */
+
+  if (lastIntent[from] === "DOMAIN_CHANGE") {
+
+    userSessions[from] = "collect_domain_change_details";
+
+    escalationData[from] = {
+      issue: "Domain Change Request"
+    };
+
+    await sendMessage(
+      from,
+
+      `Sure 😊 Please share the below details again so our support team can review your domain change request:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Existing Domain
+4️⃣ Requested New Domain`
+    );
+
+    return res.sendStatus(200);
+  }
+
+  /*
+  EXAM ISSUE CONTINUATION
+  */
+
+  if (lastIntent[from] === "EXAM_ISSUE") {
+
+    userSessions[from] = "collect_exam_issue";
+
+    escalationData[from] = {
+      issue: "Test / Exam / Hackathon Issue"
+    };
+
+    await sendMessage(
+      from,
+
+      `I understand 😊 Please share the below details again so our support team can investigate the issue faster:
+
+1️⃣ Full Name
+2️⃣ Registered Email ID
+3️⃣ Test / Exam Link
+4️⃣ Screenshot / Screen Recording`
+    );
+
+    return res.sendStatus(200);
+  }
+}
+/*
+====================================
+ANTI-SPAM / ABUSE HANDLING
+====================================
+*/
+
+if (!spamTracker[from]) {
+  spamTracker[from] = {
+    count: 0,
+    lastMessage: "",
+  };
+}
+
+/*
+REPEATED MESSAGE SPAM
+*/
+
+if (spamTracker[from].lastMessage === text) {
+  spamTracker[from].count += 1;
+} else {
+  spamTracker[from].count = 0;
+}
+
+spamTracker[from].lastMessage = text;
+
+/*
+SPAM WARNING
+*/
+
+if (spamTracker[from].count >= 3) {
+  analytics.spamWarnings++;
+
+  await sendMessage(
+    from,
+
+    `😊 We understand your concern.
+
+Our support team is already working on your issue. Kindly avoid sending repeated messages so we can assist you smoothly.`
+  );
+
+  return res.sendStatus(200);
+}
+
+/*
+RUDE / ABUSIVE LANGUAGE DETECTION
+*/
+
+const abusiveWords = [
+  "idiot",
+  "stupid",
+  "waste",
+  "fraud",
+  "fake",
+  "scam",
+  "useless",
+  "worst",
+  "fool"
+];
+
+if (
+  abusiveWords.some(word => text.includes(word))
+) {
+
+  await sendMessage(
+    from,
+
+    `We’re here to help 😊
+
+Kindly avoid using inappropriate language so our support team can assist you better.`
+  );
+
+  return res.sendStatus(200);
+}
+        /*
+====================================
+AUTO FAQ REPLIES
+====================================
+*/
+
+if (
+  text.includes("class timing") ||
+  text.includes("class timings") ||
+  text.includes("when are classes")
+) {
+  analytics.faqReplies++;
+  await sendMessage(
+    from,
+
+    `📅 Live classes are generally conducted during evening hours after 5 PM.
+
+Weekly schedules and Zoom links are shared in the official WhatsApp group 😊`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text.includes("recording") ||
+  text.includes("recorded session") ||
+  text.includes("missed class")
+) {
+  analytics.faqReplies++;
+  await sendMessage(
+    from,
+
+    `🎥 Recorded sessions are available inside your lesson plans in TapTap LMS 😊`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text.includes("attendance")
+) {
+  analytics.faqReplies++;
+  await sendMessage(
+    from,
+
+    `✅ Attendance is important for internship completion, assignments, assessments and certificate eligibility 😊`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text.includes("start date") ||
+  text.includes("internship start")
+) {
+  analytics.faqReplies++;
+  await sendMessage(
+    from,
+
+    `🚀 Current internship batch starts on 20 May 2026 😊`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text.includes("taptap") ||
+  text.includes("lms link") ||
+  text.includes("dashboard link")
+) {
+  analytics.faqReplies++;
+  await sendMessage(
+    from,
+
+    `🔗 TapTap LMS:
+https://taptap.blackbucks.me 😊`
+  );
+
+  return res.sendStatus(200);
+}
+
+if (
+  text.includes("whatsapp group")
+) {
+  analytics.faqReplies++;
+  await sendMessage(
+    from,
+
+    `📢 Official WhatsApp group invitation links are shared through onboarding emails/offer letters 😊`
+  );
+
+  return res.sendStatus(200);
+}
         /*
         ====================================
         AI INTENT DETECTION
@@ -556,6 +887,7 @@ No explanation.
         const detectedIntent = intentCheck.choices[0].message.content.trim();
 
         console.log("Detected Intent:", detectedIntent);
+        lastIntent[from] = detectedIntent;
 
         /*
         ====================================
@@ -564,6 +896,7 @@ No explanation.
         */
 
         if (detectedIntent === "LOGIN_ISSUE") {
+          analytics.loginIssues++;
           userSessions[from] = "collect_issue_details";
 
           escalationData[from] = {
@@ -573,7 +906,7 @@ No explanation.
           await sendMessage(
             from,
 
-            `📋 Please share the following details:
+            `Sure 😊 Please share the below details so our support team can help you faster:
 
 1️⃣ Full Name
 2️⃣ College Name
@@ -617,6 +950,7 @@ Offer letters are usually shared within 24–48 working hours after verification
         */
 
         if (detectedIntent === "OFFER_LETTER_ISSUE") {
+          analytics.offerLetterIssues++;
           userSessions[from] = "waiting_offer_letter_confirmation";
 
           await sendMessage(
@@ -645,6 +979,7 @@ still not received`
         */
 
         if (detectedIntent === "DOMAIN_CHANGE") {
+          analytics.domainChanges++;
           userSessions[from] = "collect_domain_change_details";
 
           escalationData[from] = {
@@ -654,7 +989,7 @@ still not received`
           await sendMessage(
             from,
 
-            `📋 Please share the following details for domain change request:
+            `Sure 😊 Please share the below details for the domain change request so our support team can review it faster:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -678,6 +1013,7 @@ OR
         */
 
         if (detectedIntent === "EXAM_ISSUE") {
+          analytics.examIssues++;
           userSessions[from] = "collect_exam_issue";
 
           escalationData[from] = {
@@ -687,7 +1023,7 @@ OR
           await sendMessage(
             from,
 
-            `📋 Please share the following details:
+            `Sure 😊 Please share the below details so our support team can help you faster:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -1218,6 +1554,8 @@ will be available there.
         await sendMessage(from, aiReply);
 
         console.log("Reply Sent ✅");
+
+        console.log("ANALYTICS:", analytics);
 
         return res.sendStatus(200);
       }
