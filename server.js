@@ -58,103 +58,106 @@ async function sendMessage(to, message) {
 
   console.log(data);
 }
+  const mediaResult = await mediaResponse.json();
 
-/*
-====================================
-HOME ROUTE
-====================================
-*/
+  console.log("MEDIA RESPONSE:", mediaResult);
 
-app.get("/", (req, res) => {
-  res.send("Blackbucks AI Bot Running 🚀");
-});
+  /*
+  ====================================
+  HOME ROUTE
+  ====================================
+  */
 
-/*
-====================================
-WEBHOOK VERIFY
-====================================
-*/
+  app.get("/", (req, res) => {
+    res.send("Blackbucks AI Bot Running 🚀");
+  });
 
-app.get("/webhook", (req, res) => {
-  const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+  /*
+  ====================================
+  WEBHOOK VERIFY
+  ====================================
+  */
 
-  const mode = req.query["hub.mode"];
+  app.get("/webhook", (req, res) => {
+    const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-  const token = req.query["hub.verify_token"];
+    const mode = req.query["hub.mode"];
 
-  const challenge = req.query["hub.challenge"];
+    const token = req.query["hub.verify_token"];
 
-  if (mode && token === VERIFY_TOKEN) {
-    console.log("Webhook Verified");
+    const challenge = req.query["hub.challenge"];
 
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
-  }
-});
+    if (mode && token === VERIFY_TOKEN) {
+      console.log("Webhook Verified");
 
-/*
-====================================
-MAIN WEBHOOK
-====================================
-*/
-const currentDateTime = new Date().toString();
-app.post("/webhook", async (req, res) => {
-  try {
-    const body = req.body;
-
-    const message =
-      body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-
-    // Ignore status updates
-    if (!message) {
-      console.log("Ignoring non-message webhook event");
-      return res.sendStatus(200);
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
     }
+  });
 
-    const rawText = message?.text?.body;
+  /*
+  ====================================
+  MAIN WEBHOOK
+  ====================================
+  */
+  const currentDateTime = new Date().toString();
+  app.post("/webhook", async (req, res) => {
+    try {
+      const body = req.body;
 
-    // Ignore text messages without a text body
-    if (message.type === "text" && !rawText) {
-      console.log("No text body found");
-      return res.sendStatus(200);
-    }
+      const message =
+        body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    const text = rawText ? rawText.toLowerCase().trim() : "";
+      // Ignore status updates
+      if (!message) {
+        console.log("Ignoring non-message webhook event");
+        return res.sendStatus(200);
+      }
 
-    console.log("Student:", text);
+      const rawText = message?.text?.body;
 
-    if (
-      message &&
-      (message.type === "text" || message.type === "image") &&
-      !message.from_me
-    ) {
-      const from = message.from;
+      // Ignore text messages without a text body
+      if (message.type === "text" && !rawText) {
+        console.log("No text body found");
+        return res.sendStatus(200);
+      }
 
-      /*
-====================================
-HANDLE IMAGE ESCALATION
-====================================
-*/
+      const text = rawText ? rawText.toLowerCase().trim() : "";
 
-if (
-  (message.type === "image" ||
-    message.type === "document") &&
-  userSessions[from] === "waiting_for_screenshot"
-) {
-  const teamNumber = process.env.TEAM_WHATSAPP_NUMBER;
+      console.log("Student:", text);
 
-  console.log("TEAM NUMBER:", teamNumber);
-  console.log("Sending escalation...");
+      if (
+        message &&
+        (message.type === "text" || message.type === "image") &&
+        !message.from_me
+      ) {
+        const from = message.from;
 
-  const issueData = escalationData[from];
+        /*
+  ====================================
+  HANDLE IMAGE ESCALATION
+  ====================================
+  */
 
-  const mediaId =
-    message.type === "image"
-      ? message.image.id
-      : message.document.id;
+        if (
+          (message.type === "image" ||
+            message.type === "document") &&
+          userSessions[from] === "waiting_for_screenshot"
+        ) {
+          const teamNumber = process.env.TEAM_WHATSAPP_NUMBER;
 
-  const escalationMessage = `🚨 STUDENT ISSUE ESCALATION
+          console.log("TEAM NUMBER:", teamNumber);
+          console.log("Sending escalation...");
+
+          const issueData = escalationData[from];
+
+          const mediaId =
+            message.type === "image"
+              ? message.image.id
+              : message.document.id;
+
+          const escalationMessage = `🚨 STUDENT ISSUE ESCALATION
 
 👤 Student Details:
 
@@ -167,172 +170,172 @@ ${issueData.issue}
 
 Please check and assist the student.`;
 
-  await sendMessage(teamNumber, escalationMessage);
+          await sendMessage(teamNumber, escalationMessage);
 
-  await fetch(
-  `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
-  {
-    method: "POST",
+          await fetch(
+            `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
+            {
+              method: "POST",
 
-    headers: {
-      "Content-Type": "application/json",
+              headers: {
+                "Content-Type": "application/json",
 
-      Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-    },
+                Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+              },
 
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
 
-      to: teamNumber,
+                to: teamNumber,
 
-      type: message.type,
+                type: message.type,
 
-      [message.type]: {
-        id: mediaId,
-      },
-    }),
-  }
-);
-  await sendMessage(
-    from,
+                [message.type]: {
+                  id: mediaId,
+                },
+              }),
+            }
+          );
+          await sendMessage(
+            from,
 
-    `✅ Your issue has been escalated successfully along with screenshot proof.
+            `✅ Your issue has been escalated successfully along with screenshot proof.
 
 Our support team will contact you shortly 😊`
-  );
+          );
 
-  delete escalationData[from];
+          delete escalationData[from];
 
-  userSessions[from] = null;
+          userSessions[from] = null;
 
-  return res.sendStatus(200);
-}
-/*
-====================================
-HANDLE TEXT MESSAGE
-====================================
-*/
+          return res.sendStatus(200);
+        }
+        /*
+        ====================================
+        HANDLE TEXT MESSAGE
+        ====================================
+        */
 
-/*
-====================================
-RESET CHAT
-====================================
-*/
+        /*
+        ====================================
+        RESET CHAT
+        ====================================
+        */
 
-if (text === "reset" || text === "restart") {
-  sessions[from] = [];
-  userSessions[from] = null;
-  delete escalationData[from];
+        if (text === "reset" || text === "restart") {
+          sessions[from] = [];
+          userSessions[from] = null;
+          delete escalationData[from];
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `✅ Chat reset successful.
+            `✅ Chat reset successful.
 
 Send Hi to start again 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-GREETING FLOW
-====================================
-*/
+        /*
+        ====================================
+        GREETING FLOW
+        ====================================
+        */
 
-if (
-  text === "hi" ||
-  text === "hello" ||
-  text === "hey" ||
-  text === "hii"
-) {
-  userSessions[from] = "waiting_for_query";
+        if (
+          text === "hi" ||
+          text === "hello" ||
+          text === "hey" ||
+          text === "hii"
+        ) {
+          userSessions[from] = "waiting_for_query";
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `👋 Hi, how are you? 😊
+            `👋 Hi, how are you? 😊
 
 I'm the Blackbucks AI Support Assistant.
 
 How can I help you today?`
-  );
+          );
 
-  return res.sendStatus(200);
-}
-/*
-====================================
-OFFER LETTER FOLLOW-UP
-====================================
-*/
+          return res.sendStatus(200);
+        }
+        /*
+        ====================================
+        OFFER LETTER FOLLOW-UP
+        ====================================
+        */
 
-if (userSessions[from] === "waiting_offer_letter_confirmation") {
-  if (
-    text.includes("still not received") ||
-    text.includes("not received") ||
-    text.includes("didn't receive")
-  ) {
-    userSessions[from] = "collect_offer_letter_issue";
+        if (userSessions[from] === "waiting_offer_letter_confirmation") {
+          if (
+            text.includes("still not received") ||
+            text.includes("not received") ||
+            text.includes("didn't receive")
+          ) {
+            userSessions[from] = "collect_offer_letter_issue";
 
-    escalationData[from] = {
-      issue: "Offer Letter Not Received",
-    };
+            escalationData[from] = {
+              issue: "Offer Letter Not Received",
+            };
 
-    await sendMessage(
-      from,
+            await sendMessage(
+              from,
 
-      `📋 Please share:
+              `📋 Please share:
 
 1️⃣ Registered Email ID
 2️⃣ Payment Screenshot
 3️⃣ Payment Date & Time
 
 Our support team will verify and assist you 😊`
-    );
+            );
 
-    return res.sendStatus(200);
-  }
-}
-/*
-====================================
-SPECIAL PAY NOW CONDITION
-====================================
-*/
+            return res.sendStatus(200);
+          }
+        }
+        /*
+        ====================================
+        SPECIAL PAY NOW CONDITION
+        ====================================
+        */
 
-if (
-  text.includes("pay now") ||
-  text.includes("again to pay") ||
-  text.includes("pay option") ||
-  text.includes("still showing")
-) {
-  await sendMessage(
-    from,
+        if (
+          text.includes("pay now") ||
+          text.includes("again to pay") ||
+          text.includes("pay option") ||
+          text.includes("still showing")
+        ) {
+          await sendMessage(
+            from,
 
-    `Please don’t worry 😊
+            `Please don’t worry 😊
 
 The registration website and the TapTap student dashboard are different platforms.
 
 Your payment has already been updated successfully in the TapTap dashboard, which is why the “Pay Now” option is not visible there. Sometimes, the registration link may still continue showing the “Pay Now” option temporarily due to a sync delay.
 
 Offer letters are usually shared within 24–48 working hours after verification.`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-AI INTENT DETECTION
-====================================
-*/
-const currentDateTime = new Date().toString();
-const intentCheck = await groq.chat.completions.create({
-  messages: [
-    {
-      role: "system",
+        /*
+        ====================================
+        AI INTENT DETECTION
+        ====================================
+        */
+        const currentDateTime = new Date().toString();
+        const intentCheck = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
 
-      content: `
+              content: `
 Current Date & Time:
 ${currentDateTime}
 
@@ -437,38 +440,38 @@ GENERAL_SUPPORT
 Reply ONLY with the keyword.
 No explanation.
 `,
-    },
+            },
 
-    {
-      role: "user",
-      content: text,
-    },
-  ],
+            {
+              role: "user",
+              content: text,
+            },
+          ],
 
-  model: "llama-3.3-70b-versatile",
-});
+          model: "llama-3.3-70b-versatile",
+        });
 
-const detectedIntent = intentCheck.choices[0].message.content.trim();
+        const detectedIntent = intentCheck.choices[0].message.content.trim();
 
-console.log("Detected Intent:", detectedIntent);
+        console.log("Detected Intent:", detectedIntent);
 
-/*
-====================================
-LOGIN ISSUE FLOW
-====================================
-*/
+        /*
+        ====================================
+        LOGIN ISSUE FLOW
+        ====================================
+        */
 
-if (detectedIntent === "LOGIN_ISSUE") {
-  userSessions[from] = "collect_issue_details";
+        if (detectedIntent === "LOGIN_ISSUE") {
+          userSessions[from] = "collect_issue_details";
 
-  escalationData[from] = {
-    issue: "TapTap LMS Login Issue",
-  };
+          escalationData[from] = {
+            issue: "TapTap LMS Login Issue",
+          };
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📋 Please share the following details:
+            `📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ College Name
@@ -480,44 +483,44 @@ if (detectedIntent === "LOGIN_ISSUE") {
 • screenshot
 OR
 • screen recording of the issue 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-PAYMENT ISSUE FLOW
-====================================
-*/
+        /*
+        ====================================
+        PAYMENT ISSUE FLOW
+        ====================================
+        */
 
-if (detectedIntent === "PAYMENT_ISSUE") {
-  await sendMessage(
-    from,
+        if (detectedIntent === "PAYMENT_ISSUE") {
+          await sendMessage(
+            from,
 
-    `Please don’t worry 😊
+            `Please don’t worry 😊
 
 Sometimes the dashboard may still show "Pay Now" even after successful payment.
 
 Offer letters are usually shared within 24–48 working hours after verification.`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-OFFER LETTER ISSUE FLOW
-====================================
-*/
+        /*
+        ====================================
+        OFFER LETTER ISSUE FLOW
+        ====================================
+        */
 
-if (detectedIntent === "OFFER_LETTER_ISSUE") {
-  userSessions[from] = "waiting_offer_letter_confirmation";
+        if (detectedIntent === "OFFER_LETTER_ISSUE") {
+          userSessions[from] = "waiting_offer_letter_confirmation";
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `Please don’t worry 😊
+            `Please don’t worry 😊
 
 Offer letters and onboarding emails are usually shared within 24–48 working hours after payment verification.
 
@@ -528,28 +531,28 @@ Please check:
 
 If you still haven’t received any email after 48 working hours, please reply:
 still not received`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-DOMAIN CHANGE FLOW
-====================================
-*/
+        /*
+        ====================================
+        DOMAIN CHANGE FLOW
+        ====================================
+        */
 
-if (detectedIntent === "DOMAIN_CHANGE") {
-  userSessions[from] = "collect_domain_change_details";
+        if (detectedIntent === "DOMAIN_CHANGE") {
+          userSessions[from] = "collect_domain_change_details";
 
-  escalationData[from] = {
-    issue: "Domain Change Request",
-  };
+          escalationData[from] = {
+            issue: "Domain Change Request",
+          };
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📋 Please share the following details for domain change request:
+            `📋 Please share the following details for domain change request:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -561,28 +564,28 @@ if (detectedIntent === "DOMAIN_CHANGE") {
 • payment screenshot
 OR
 • offer letter screenshot 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-EXAM ISSUE FLOW
-====================================
-*/
+        /*
+        ====================================
+        EXAM ISSUE FLOW
+        ====================================
+        */
 
-if (detectedIntent === "EXAM_ISSUE") {
-  userSessions[from] = "collect_exam_issue";
+        if (detectedIntent === "EXAM_ISSUE") {
+          userSessions[from] = "collect_exam_issue";
 
-  escalationData[from] = {
-    issue: "Test / Hackathon / Exam Issue",
-  };
+          escalationData[from] = {
+            issue: "Test / Hackathon / Exam Issue",
+          };
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📋 Please share the following details:
+            `📋 Please share the following details:
 
 1️⃣ Full Name
 2️⃣ Registered Email ID
@@ -594,27 +597,27 @@ if (detectedIntent === "EXAM_ISSUE") {
 • screenshot
 OR
 • screen recording of the issue 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
 
-/*
-====================================
-COLLECT LOGIN ISSUE DETAILS
-====================================
-*/
+        /*
+        ====================================
+        COLLECT LOGIN ISSUE DETAILS
+        ====================================
+        */
 
-if (userSessions[from] === "collect_issue_details") {
-  escalationData[from].details = text;
+        if (userSessions[from] === "collect_issue_details") {
+          escalationData[from].details = text;
 
-  userSessions[from] = "waiting_for_screenshot";
+          userSessions[from] = "waiting_for_screenshot";
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📸 Thank you for sharing your details.
+            `📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
@@ -622,113 +625,113 @@ OR
 • screen recording
 
 This helps our support team identify the issue faster 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-COLLECT DOMAIN CHANGE DETAILS
-====================================
-*/
+        /*
+        ====================================
+        COLLECT DOMAIN CHANGE DETAILS
+        ====================================
+        */
 
-if (userSessions[from] === "collect_domain_change_details") {
-  escalationData[from].details = text;
+        if (userSessions[from] === "collect_domain_change_details") {
+          escalationData[from].details = text;
 
-  userSessions[from] = "waiting_for_screenshot";
+          userSessions[from] = "waiting_for_screenshot";
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📸 Thank you for sharing your details.
+            `📸 Thank you for sharing your details.
 
 Now please upload:
 • payment screenshot
 OR
 • offer letter screenshot 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-COLLECT EXAM ISSUE DETAILS
-====================================
-*/
+        /*
+        ====================================
+        COLLECT EXAM ISSUE DETAILS
+        ====================================
+        */
 
-if (userSessions[from] === "collect_exam_issue") {
-  escalationData[from].details = text;
+        if (userSessions[from] === "collect_exam_issue") {
+          escalationData[from].details = text;
 
-  userSessions[from] = "waiting_for_screenshot";
+          userSessions[from] = "waiting_for_screenshot";
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📸 Thank you for sharing your details.
+            `📸 Thank you for sharing your details.
 
 Now please upload:
 • screenshot
 OR
 • screen recording of the issue 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-COLLECT OFFER LETTER DETAILS
-====================================
-*/
+        /*
+        ====================================
+        COLLECT OFFER LETTER DETAILS
+        ====================================
+        */
 
-if (userSessions[from] === "collect_offer_letter_issue") {
-  escalationData[from].details = text;
+        if (userSessions[from] === "collect_offer_letter_issue") {
+          escalationData[from].details = text;
 
-  userSessions[from] = "waiting_for_screenshot";
+          userSessions[from] = "waiting_for_screenshot";
 
-  await sendMessage(
-    from,
+          await sendMessage(
+            from,
 
-    `📸 Thank you for sharing the details.
+            `📸 Thank you for sharing the details.
 
 Now please upload:
 • payment screenshot
 OR
 • payment proof 😊`
-  );
+          );
 
-  return res.sendStatus(200);
-}
+          return res.sendStatus(200);
+        }
 
-/*
-====================================
-CREATE MEMORY
-====================================
-*/
+        /*
+        ====================================
+        CREATE MEMORY
+        ====================================
+        */
 
-if (!sessions[from]) {
-  sessions[from] = [];
-}
+        if (!sessions[from]) {
+          sessions[from] = [];
+        }
 
-sessions[from].push({
-  role: "user",
-  content: text,
-});
+        sessions[from].push({
+          role: "user",
+          content: text,
+        });
 
-/*
-====================================
-MAIN AI RESPONSE
-====================================
-*/
+        /*
+        ====================================
+        MAIN AI RESPONSE
+        ====================================
+        */
 
-const completion = await groq.chat.completions.create({
-  messages: [
-    {
-      role: "system",
+        const completion = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
 
-      content: `
+              content: `
             Current Date & Time:
 ${currentDateTime}
 
@@ -1157,48 +1160,48 @@ All resources including:
 
 will be available there.
 `,
-    },
+            },
 
-    ...sessions[from],
-  ],
+            ...sessions[from],
+          ],
 
-  model: "llama-3.1-8b-instant",
-});
+          model: "llama-3.1-8b-instant",
+        });
 
-const aiReply = completion.choices[0].message.content;
+        const aiReply = completion.choices[0].message.content;
 
-console.log("AI:", aiReply);
+        console.log("AI:", aiReply);
 
-sessions[from].push({
-  role: "assistant",
-  content: aiReply,
-});
+        sessions[from].push({
+          role: "assistant",
+          content: aiReply,
+        });
 
-if (sessions[from].length > 20) {
-  sessions[from] = sessions[from].slice(-20);
-}
+        if (sessions[from].length > 20) {
+          sessions[from] = sessions[from].slice(-20);
+        }
 
-await sendMessage(from, aiReply);
+        await sendMessage(from, aiReply);
 
-console.log("Reply Sent ✅");
+        console.log("Reply Sent ✅");
 
-return res.sendStatus(200);
+        return res.sendStatus(200);
+      }
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.log(error);
+
+      res.sendStatus(500);
     }
+  });
 
-res.sendStatus(200);
-  } catch (error) {
-  console.log(error);
-
-  res.sendStatus(500);
-}
-});
-
-/*
-====================================
-START SERVER
-====================================
-*/
-
-app.listen(3000, () => {
+  /*
+  ====================================
+  START SERVER
+  ====================================
+  */
+  
+  app.listen(3000, () => {
   console.log("🚀 AI Server running on port 3000");
 });
