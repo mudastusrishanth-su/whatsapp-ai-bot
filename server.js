@@ -58,9 +58,6 @@ async function sendMessage(to, message) {
 
   console.log(data);
 }
-  const mediaResult = await mediaResponse.json();
-
-  console.log("MEDIA RESPONSE:", mediaResult);
 
   /*
   ====================================
@@ -323,7 +320,107 @@ Offer letters are usually shared within 24–48 working hours after verification
 
           return res.sendStatus(200);
         }
+        /*
+        ====================================
+        COLLECT LOGIN ISSUE DETAILS
+        ====================================
+        */
 
+        if (userSessions[from] === "collect_issue_details") {
+          escalationData[from].details = text;
+
+          userSessions[from] = "waiting_for_screenshot";
+
+          await sendMessage(
+            from,
+
+            `📸 Thank you for sharing your details.
+
+Now please upload:
+• screenshot
+OR
+• screen recording
+
+This helps our support team identify the issue faster 😊`
+          );
+
+          return res.sendStatus(200);
+        }
+
+        /*
+        ====================================
+        COLLECT DOMAIN CHANGE DETAILS
+        ====================================
+        */
+
+        if (userSessions[from] === "collect_domain_change_details") {
+          escalationData[from].details = text;
+
+          userSessions[from] = "waiting_for_screenshot";
+
+          await sendMessage(
+            from,
+
+            `📸 Thank you for sharing your details.
+
+Now please upload:
+• payment screenshot
+OR
+• offer letter screenshot 😊`
+          );
+
+          return res.sendStatus(200);
+        }
+
+        /*
+        ====================================
+        COLLECT EXAM ISSUE DETAILS
+        ====================================
+        */
+
+        if (userSessions[from] === "collect_exam_issue") {
+          escalationData[from].details = text;
+
+          userSessions[from] = "waiting_for_screenshot";
+
+          await sendMessage(
+            from,
+
+            `📸 Thank you for sharing your details.
+
+Now please upload:
+• screenshot
+OR
+• screen recording of the issue 😊`
+          );
+
+          return res.sendStatus(200);
+        }
+
+        /*
+        ====================================
+        COLLECT OFFER LETTER DETAILS
+        ====================================
+        */
+
+        if (userSessions[from] === "collect_offer_letter_issue") {
+          escalationData[from].details = text;
+
+          userSessions[from] = "waiting_for_screenshot";
+
+          await sendMessage(
+            from,
+
+            `📸 Thank you for sharing the details.
+
+Now please upload:
+• payment screenshot
+OR
+• payment proof 😊`
+          );
+
+          return res.sendStatus(200);
+        }
         /*
         ====================================
         AI INTENT DETECTION
@@ -601,110 +698,6 @@ OR
 
           return res.sendStatus(200);
         }
-
-
-        /*
-        ====================================
-        COLLECT LOGIN ISSUE DETAILS
-        ====================================
-        */
-
-        if (userSessions[from] === "collect_issue_details") {
-          escalationData[from].details = text;
-
-          userSessions[from] = "waiting_for_screenshot";
-
-          await sendMessage(
-            from,
-
-            `📸 Thank you for sharing your details.
-
-Now please upload:
-• screenshot
-OR
-• screen recording
-
-This helps our support team identify the issue faster 😊`
-          );
-
-          return res.sendStatus(200);
-        }
-
-        /*
-        ====================================
-        COLLECT DOMAIN CHANGE DETAILS
-        ====================================
-        */
-
-        if (userSessions[from] === "collect_domain_change_details") {
-          escalationData[from].details = text;
-
-          userSessions[from] = "waiting_for_screenshot";
-
-          await sendMessage(
-            from,
-
-            `📸 Thank you for sharing your details.
-
-Now please upload:
-• payment screenshot
-OR
-• offer letter screenshot 😊`
-          );
-
-          return res.sendStatus(200);
-        }
-
-        /*
-        ====================================
-        COLLECT EXAM ISSUE DETAILS
-        ====================================
-        */
-
-        if (userSessions[from] === "collect_exam_issue") {
-          escalationData[from].details = text;
-
-          userSessions[from] = "waiting_for_screenshot";
-
-          await sendMessage(
-            from,
-
-            `📸 Thank you for sharing your details.
-
-Now please upload:
-• screenshot
-OR
-• screen recording of the issue 😊`
-          );
-
-          return res.sendStatus(200);
-        }
-
-        /*
-        ====================================
-        COLLECT OFFER LETTER DETAILS
-        ====================================
-        */
-
-        if (userSessions[from] === "collect_offer_letter_issue") {
-          escalationData[from].details = text;
-
-          userSessions[from] = "waiting_for_screenshot";
-
-          await sendMessage(
-            from,
-
-            `📸 Thank you for sharing the details.
-
-Now please upload:
-• payment screenshot
-OR
-• payment proof 😊`
-          );
-
-          return res.sendStatus(200);
-        }
-
         /*
         ====================================
         CREATE MEMORY
