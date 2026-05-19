@@ -125,10 +125,14 @@ async function sendMessage(to, message) {
       console.log("Student:", text);
 
       if (
-        message &&
-        (message.type === "text" || message.type === "image") &&
-        !message.from_me
-      ) {
+  message &&
+  (
+    message.type === "text" ||
+    message.type === "image" ||
+    message.type === "document"
+  ) &&
+  !message.from_me
+) {
         const from = message.from;
 
         /*
