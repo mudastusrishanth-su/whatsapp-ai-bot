@@ -1139,7 +1139,31 @@ OR
 
           return res.sendStatus(200);
         }
+        /*
+====================================
+COLLECT DOMAIN CHANGE DETAILS
+====================================
+*/
 
+if (userSessions[from] === "collect_domain_change_details") {
+
+  escalationData[from].details = text;
+
+  userSessions[from] = "waiting_for_screenshot";
+
+  await sendMessage(
+    from,
+
+    `📸 Thank you for sharing the details.
+
+Now please upload:
+• payment screenshot
+OR
+• offer letter screenshot 😊`
+  );
+
+  return res.sendStatus(200);
+}
         /*
         ====================================
         EXAM ISSUE FLOW
