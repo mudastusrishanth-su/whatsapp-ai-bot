@@ -288,9 +288,9 @@ How can I help you today?`
 
               `📋 Please share:
 
-1️⃣ Registered Email ID
-2️⃣ Payment Screenshot
-3️⃣ Payment Date & Time
+ *Registered Email ID
+ *Phone Number 
+ *Payment Date & Time
 
 Our support team will verify and assist you 😊`
             );
