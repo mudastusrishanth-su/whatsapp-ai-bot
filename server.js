@@ -784,6 +784,14 @@ Reply ONLY with ONE keyword:
 LOGIN_ISSUE
 PAYMENT_ISSUE
 OFFER_LETTER_ISSUE
+OFFER_LETTER_MODIFICATION
+→ ONLY if student wants:
+• name correction
+• spelling correction
+• college correction
+• offer letter modification
+• wrong details in offer letter
+• update offer letter information
 DOMAIN_CHANGE
 EXAM_ISSUE
 GENERAL_SUPPORT
