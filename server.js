@@ -295,6 +295,25 @@ Our support team will verify and assist you 😊`
     return res.sendStatus(200);
   }
 }
+if (
+  text.includes("still showing pay now") ||
+  text.includes("pay now option still showing") ||
+  text.includes("still shows pay now")
+) {
+  await sendMessage(
+    from,
+
+    `Please don’t worry 😊
+
+The registration website and the TapTap student dashboard are different platforms.
+
+Your payment has already been updated successfully in the TapTap dashboard, which is why the “Pay Now” option is not visible there. Sometimes, the registration link may still continue showing the “Pay Now” option temporarily due to a sync delay.
+
+Offer letters are usually shared within 24–48 working hours after verification.`
+  );
+
+  return res.sendStatus(200);
+}
 
 /*
 ====================================
@@ -672,25 +691,6 @@ Now please upload:
 • payment screenshot
 OR
 • payment proof 😊`
-  );
-
-  return res.sendStatus(200);
-}
-if (
-  text.includes("still showing pay now") ||
-  text.includes("pay now option still showing") ||
-  text.includes("still shows pay now")
-) {
-  await sendMessage(
-    from,
-
-    `Please don’t worry 😊
-
-The registration website and the TapTap student dashboard are different platforms.
-
-Your payment has already been updated successfully in the TapTap dashboard, which is why the “Pay Now” option is not visible there. Sometimes, the registration link may still continue showing the “Pay Now” option temporarily due to a sync delay.
-
-Offer letters are usually shared within 24–48 working hours after verification.`
   );
 
   return res.sendStatus(200);
