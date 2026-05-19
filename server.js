@@ -130,7 +130,7 @@ async function sendMessage(to, message) {
   MAIN WEBHOOK
   ====================================
   */
-  const currentDateTime = new Date().toString();const currentDateTime = new Date().toLocaleString("en-IN", {
+  const currentDateTime = new Date().toLocaleString("en-IN", {
   timeZone: "Asia/Kolkata",
 });
   app.post("/webhook", async (req, res) => {
