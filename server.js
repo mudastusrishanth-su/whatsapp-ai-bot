@@ -170,30 +170,29 @@ Please check and assist the student.`;
   await sendMessage(teamNumber, escalationMessage);
 
   await fetch(
-    `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
-    {
-      method: "POST",
+  `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
+  {
+    method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
+    headers: {
+      "Content-Type": "application/json",
 
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+      Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+    },
+
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+
+      to: teamNumber,
+
+      type: message.type,
+
+      [message.type]: {
+        id: mediaId,
       },
-
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-
-        to: teamNumber,
-
-        type: "image",
-
-        image: {
-          id: mediaId,
-        },
-      }),
-    }
-  );
-
+    }),
+  }
+);
   await sendMessage(
     from,
 
