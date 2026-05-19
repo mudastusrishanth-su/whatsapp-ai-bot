@@ -1694,7 +1694,10 @@ will be available there.
 
         console.log("Reply Sent ✅");
 
-        console.log("ANALYTICS:", analytics);
+        console.log(
+  "ANALYTICS:",
+  JSON.stringify(analytics, null, 2)
+);
 
         return res.sendStatus(200);
       }
