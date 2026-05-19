@@ -624,7 +624,7 @@ Offer letters are usually shared within 24–48 working hours after verification
 
             `Please don’t worry 😊
 
-Offer letters and onboarding emails are usually shared within 24–48 working hours after payment verification.
+Offer letters, onboarding emails and official WhatsApp group links are usually shared within 24–48 working hours after payment verification.
 
 Please check:
 • Inbox
@@ -1122,7 +1122,7 @@ I paid but dashboard still shows pay now
 Assistant:
 Please don’t worry 😊
 
-Sometimes the dashboard may still show "Pay Now" even after successful payment.
+Sometimes the dashboard may still show "Pay Now" even after successful payment beacuse registartion link and student dashboard links are diffrent .
 
 Offer letters are usually shared within 24–48 working hours after verification.
 
