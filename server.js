@@ -1002,6 +1002,16 @@ AND
 REAL SUPPORT EXAMPLES
 ====================================
 Student:
+Should I pay any money to enroll in internship?
+
+Assistant:
+😊 Internship fee/payment details are available on the official registration website.
+
+Students can check complete fee details and available domains during registration:
+
+https://internships.blackbucks.me
+
+Student:
 Is attendance mandatory?
 
 Assistant:
