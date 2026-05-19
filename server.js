@@ -300,6 +300,30 @@ Our support team will verify and assist you 😊`
         }
         /*
         ====================================
+        COLLECT OFFER LETTER DETAILS
+        ====================================
+        */
+
+        if (userSessions[from] === "collect_offer_letter_issue") {
+          escalationData[from].details = text;
+
+          userSessions[from] = "waiting_for_screenshot";
+
+          await sendMessage(
+            from,
+
+            `📸 Thank you for sharing the details.
+
+Now please upload:
+• payment screenshot
+OR
+• payment proof 😊`
+          );
+
+          return res.sendStatus(200);
+        }
+        /*
+        ====================================
         SPECIAL PAY NOW CONDITION
         ====================================
         */
@@ -401,30 +425,7 @@ OR
           return res.sendStatus(200);
         }
 
-        /*
-        ====================================
-        COLLECT OFFER LETTER DETAILS
-        ====================================
-        */
-
-        if (userSessions[from] === "collect_offer_letter_issue") {
-          escalationData[from].details = text;
-
-          userSessions[from] = "waiting_for_screenshot";
-
-          await sendMessage(
-            from,
-
-            `📸 Thank you for sharing the details.
-
-Now please upload:
-• payment screenshot
-OR
-• payment proof 😊`
-          );
-
-          return res.sendStatus(200);
-        }
+        
         /*
         ====================================
         AI INTENT DETECTION
